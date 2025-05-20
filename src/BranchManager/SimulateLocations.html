@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geofence Violation Simulator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .map-container {
+            position: relative;
+        }
+        #simulation-map {
+            height: 100%;
+            width: 100%;
+        }
+        .control-panel, .employee-info, .violation-details {
+            background-color: #ecf0f1;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid #bdc3c7;
+        }
+        button {
+            background-color: #3498db;
+            color: #ecf0f1;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .violation-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status-safe {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .status-violation {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .status-neutral {
+            background-color: #7f8c8d;
+            color: white;
+        }
+        .history-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #bdc3c7;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <h2>Geofence Simulator</h2>
+            <div class="control-panel">
+                <h3>Select Employee</h3>
+                <select id="employee-dropdown">
+                    <option value="">Select Employee</option>
+                </select>
+                <button id="simulate-btn">Start Simulation</button>
+                <button id="clear-btn">Clear Simulation</button>
+                <div id="simulation-status" class="violation-status status-neutral">
+                    Ready to simulate
+                </div>
+            </div>
+            <div class="employee-info" id="employee-details" style="color: #2c3e50;">
+                Select an employee to view details
+            </div>
+            <div class="violation-details" id="violation-details" style="color: #2c3e50;">
+                <h3>Simulation History</h3>
+                <div id="simulation-history"></div>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="simulation-map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let employeeMarkers = {};
+        let geofencePolygons = {};
+        let currentEmployee = null;
+        let simulationMode = false;
+        let pathPolyline = null;
+        let pathCoordinates = [];
+
+        function initMap() {
+            map = L.map('simulation-map').setView([33.6844, 73.0479], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            loadEmployees();
+        }
+
+        async function loadEmployees() {
+            try {
+                const response = await fetch('http://localhost:3000/api/manager/1/employees',{
+
+          withCredentials: true
+
+      });
+                const data = await response.json();
+                const employees = data.employees;
+                const dropdown = document.getElementById('employee-dropdown');
+                dropdown.innerHTML = '<option value="">Select Employee</option>';
+                
+                employees.forEach(employee => {
+                    const option = document.createElement('option');
+                    option.value = employee.employee_id;
+                    option.textContent = `${employee.first_name} ${employee.last_name}`;
+                    dropdown.appendChild(option);
+                });
+                
+                dropdown.addEventListener('change', async () => {
+                    currentEmployee = dropdown.value;
+                    if (currentEmployee) {
+                        await loadEmployeeDetails(currentEmployee);
+                        await loadGeofence(currentEmployee);
+                    } else {
+                        clearEmployeeData();
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                updateStatus('Error loading employees', 'status-violation');
+            }
+        }
+
+        async function loadEmployeeDetails(employeeId) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/employee/my-profile/${employeeId}`,{
+
+          withCredentials: true
+
+      });
+                const data = await response.json();
+                const employee = data.profile;
+                
+                document.getElementById('employee-details').innerHTML = `
+                    <h3 style="color: #2c3e50;">${employee.first_name} ${employee.last_name}</h3>
+                    <p style="color: #2c3e50;">ID: ${employee.employee_id}</p>
+                    <p style="color: #2c3e50;">City: ${employee.city || 'N/A'}</p>
+                `;
+            } catch (error) {
+                console.error('Error loading employee details:', error);
+                document.getElementById('employee-details').innerHTML = `
+                    <p style="color: #e74c3c;">Error loading employee details</p>
+                `;
+            }
+        }
+
+        async function loadGeofence(employeeId) {
+            try {
+                if (geofencePolygons[employeeId]) {
+                    map.removeLayer(geofencePolygons[employeeId]);
+                    delete geofencePolygons[employeeId];
+                }
+                
+                const response = await fetch(`http://localhost:3000/api/employee/my-geofences/${employeeId}`, 
+                    {
+
+          withCredentials: true
+
+      }
+                );
+                const data = await response.json();
+                const geofences = data.geofences;
+
+                if (geofences.length > 0) {
+                    const geofence = geofences[0];
+                    const coordinates = geofence.geofence_boundary.map(point => [point.latitude, point.longitude]);
+                    coordinates.push(coordinates[0]); 
+                    
+                    const polygon = L.polygon(coordinates, {
+                        color: geofence.type === 'Authorized' ? 'green' : 'red',
+                        fillOpacity: 0.2,
+                        weight: 2
+                    }).addTo(map);
+                    
+                    geofencePolygons[employeeId] = polygon;
+                    map.fitBounds(polygon.getBounds());
+                }
+            } catch (error) {
+                console.error('Error loading geofence:', error);
+            }
+        }
+
+        function clearEmployeeData() {
+            document.getElementById('employee-details').innerHTML = 'Select an employee to view details';
+            document.getElementById('simulation-history').innerHTML = '';
+            updateStatus('Ready to simulate', 'status-neutral');
+            
+            if (currentEmployee && geofencePolygons[currentEmployee]) {
+                map.removeLayer(geofencePolygons[currentEmployee]);
+                delete geofencePolygons[currentEmployee];
+            }
+        }
+
+        function updateStatus(message, statusClass) {
+            const statusElement = document.getElementById('simulation-status');
+            statusElement.textContent = message;
+            statusElement.className = `violation-status ${statusClass}`;
+        }
+
+        function addToHistory(lat, lng, result) {
+            const historyElement = document.getElementById('simulation-history');
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            const status = result.insideGeofence ? 'SAFE' : 'VIOLATION';
+            const statusColor = result.insideGeofence ? '#2ecc71' : '#e74c3c';
+            
+            historyItem.innerHTML = `
+                <strong>${new Date().toLocaleTimeString()}</strong><br>
+                Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                Status: <span style="color: ${statusColor}">${status}</span><br>
+                Message: ${result.message}
+            `;
+            
+            historyElement.prepend(historyItem);
+        }
+
+        document.getElementById('simulate-btn').addEventListener('click', () => {
+            if (!currentEmployee) {
+                alert('Please select an employee first');
+                return;
+            }
+            
+            if (!geofencePolygons[currentEmployee]) {
+                alert('No geofence defined for this employee');
+                return;
+            }
+            
+            simulationMode = !simulationMode;
+            
+            if (simulationMode) {
+                document.getElementById('simulate-btn').textContent = 'Stop Simulation';
+                updateStatus('Click on map to add locations', 'status-neutral');
+                
+                if (pathPolyline) {
+                    map.removeLayer(pathPolyline);
+                    pathPolyline = null;
+                }
+                pathCoordinates = [];
+                
+                map.on('click', handleMapClick);
+            } else {
+                document.getElementById('simulate-btn').textContent = 'Start Simulation';
+                updateStatus('Simulation stopped', 'status-neutral');
+                map.off('click', handleMapClick);
+            }
+        });
+
+        async function handleMapClick(e) {
+            const { lat, lng } = e.latlng;
+
+
+            console.log(lat , lng);
+            console.log(currentEmployee);
+            
+            
+            
+            try {
+                updateStatus('Checking location...', 'status-neutral');
+                
+                const response = await fetch(`http://localhost:3000/api/location/${currentEmployee}/add-location`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lng
+                    })
+                });
+                
+                if (!response.ok) throw new Error('API request failed');
+                
+                const result = await response.json();
+                
+                const marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup(`Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>Status: ${result.insideGeofence ? 'SAFE' : 'VIOLATION'}`);
+                pathCoordinates.push([lat, lng]);
+                
+                if (pathPolyline) {
+                    map.removeLayer(pathPolyline);
+                }
+                pathPolyline = L.polyline(pathCoordinates, {color: 'blue'}).addTo(map);
+                
+                const statusClass = result.insideGeofence ? 'status-safe' : 'status-violation';
+                updateStatus(result.message, statusClass);
+                addToHistory(lat, lng, result);
+                
+            } catch (error) {
+                console.error('Error simulating location:', error);
+                updateStatus('Simulation failed', 'status-violation');
+            }
+        }
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            if (pathPolyline) {
+                map.removeLayer(pathPolyline);
+                pathPolyline = null;
+            }
+            pathCoordinates = [];
+            
+            Object.values(employeeMarkers).forEach(marker => {
+                if (marker && marker.remove) {
+                    marker.remove();
+                }
+            });
+            employeeMarkers = {};
+            
+            simulationMode = false;
+            document.getElementById('simulate-btn').textContent = 'Start Simulation';
+            updateStatus('Simulation cleared', 'status-neutral');
+        });
+
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>

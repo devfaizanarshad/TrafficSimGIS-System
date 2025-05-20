@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Route Simulation</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #controls {
+      padding: 15px;
+      background: #ffffff;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      border-bottom: 1px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    #controls button {
+      padding: 10px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    #controls button:hover {
+      background: #0056b3;
+    }
+    label {
+      font-size: 14px;
+    }
+    input[type="time"] {
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <button onclick="enableMarkerPlacement()">📍 Add Car</button>
+    <button onclick="startDrawing()">✏️ Draw Path</button>
+    <button onclick="clearPath()">🧹 Clear</button>
+    <button onclick="startRide()">▶️ Start Ride</button>
+
+    <label>Speed:
+      <input type="range" id="speedSlider" min="10" max="100" step="5" value="30" oninput="updateSpeedLabel()">
+      <span id="speedLabel">30 km/h</span>
+    </label>
+
+    <label>Start Time: <input type="time" id="startTimeInput" /></label>
+    <label>End Time: <input type="time" id="endTimeInput" /></label>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([33.6844, 73.0479], 14);  // Initial map center (Rawalpindi, Pakistan)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let marker = null;
+    let pathPoints = [];
+    let pathLine = null;
+    let drawing = false;
+    let markerPlacementMode = false;
+    let moveIndex = 0;
+    let animationFrame = null;
+
+    // Updates the speed label as the slider is moved
+    function updateSpeedLabel() {
+      const speed = document.getElementById("speedSlider").value;
+      document.getElementById("speedLabel").textContent = `${speed} km/h`;
+    }
+
+    // Enables marker placement mode
+    function enableMarkerPlacement() {
+      alert("Click on the map to place the car marker.");
+      markerPlacementMode = true;
+    }
+
+    // Starts drawing the path by clicking on the map
+    function startDrawing() {
+      clearPath();
+      drawing = true;
+      alert("Click to draw path. Double click to finish.");
+    }
+
+    // Clears the path and resets the state
+    function clearPath() {
+      if (pathLine) map.removeLayer(pathLine);
+      pathPoints = [];
+      drawing = false;
+      moveIndex = 0;
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+    }
+
+    // Map click event handler for placing marker or drawing path
+    map.on('click', function(e) {
+      if (markerPlacementMode) {
+        if (!marker) {
+          marker = L.marker(e.latlng).addTo(map);
+        } else {
+          marker.setLatLng(e.latlng);
+        }
+        markerPlacementMode = false;
+      } else if (drawing) {
+        pathPoints.push(e.latlng);
+        if (pathLine) map.removeLayer(pathLine);
+        pathLine = L.polyline(pathPoints, { color: 'blue', weight: 5 }).addTo(map);
+      }
+    });
+
+    // Map double-click event handler to finish drawing the path
+    map.on('dblclick', () => {
+      drawing = false;
+      alert("Path drawing finished.");
+    });
+
+    // Interpolates between two points for smooth animation
+    function interpolate(a, b, t) {
+      return {
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t
+      };
+    }
+
+    // Function to animate the car marker along the path
+    function animateMarker() {
+      if (moveIndex >= pathPoints.length - 1) {
+        finalizeSimulation();
+        return;
+      }
+
+      const from = pathPoints[moveIndex];
+      const to = pathPoints[moveIndex + 1];
+      const steps = 100;
+      let step = 0;
+      const delay = 3;
+
+      function stepFrame() {
+        if (step >= steps) {
+          moveIndex++;
+          animateMarker();
+          return;
+        }
+        const position = interpolate(from, to, step / steps);
+        marker.setLatLng(position);
+        step++;
+        animationFrame = setTimeout(() => requestAnimationFrame(stepFrame), delay);
+      }
+
+      stepFrame();
+    }
+
+    // Starts the ride and triggers the animation
+    function startRide() {
+      if (!marker || pathPoints.length < 2) {
+        alert("Please add a car marker and draw a valid path.");
+        return;
+      }
+
+      // Get the start time from the input field
+      const startTime = document.getElementById("startTimeInput").value;
+      if (!startTime) {
+        alert("Please select a start time.");
+        return;
+      }
+
+      console.log(`🕒 Ride started at: ${startTime}`);
+
+      moveIndex = 0;
+      animateMarker();
+
+      // Record the end time after animation completes
+      setTimeout(() => {
+        const endTime = document.getElementById("endTimeInput").value;
+        if (!endTime) {
+          alert("Please select an end time.");
+          return;
+        }
+        console.log(`🕔 Ride ended at: ${endTime}`);
+
+        // Store the simulation data (including start and end times)
+        finalizeSimulation(startTime, endTime);
+      }, (pathPoints.length - 1) * 10);
+    }
+
+    // Finalizes the simulation and sends data to the backend API
+    function finalizeSimulation(startTime, endTime) {
+      const distMeters = getTotalDistance(pathPoints);
+      const speed = document.getElementById("speedSlider").value;
+      const isCongested = speed < 30;  // If speed is less than 30 km/h, it's congested
+
+      const simulation = {
+        path: pathPoints.map(p => ({ lat: p.lat, lon: p.lng })),  // Use 'lon' for consistency
+        speed: speed,
+        start_time: startTime,
+        end_time: endTime,
+        is_congested: isCongested
+      };
+
+      console.log("📦 Simulation Data:", JSON.stringify(simulation, null, 2));
+
+      // Send the simulation data to the API
+      fetch('http://localhost:3000/api/location/car-simulation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(simulation)
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Data received from backend:", data);
+        // Call function to highlight congested segments
+        showCongestedSegments(data.points);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create simulation. Please try again.');
+      });
+    }
+
+    // Function to calculate the total distance of the path
+    function getTotalDistance(points) {
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        total += getDistance(points[i-1], points[i]);
+      }
+      return total;
+    }
+
+    // Function to calculate distance between two points using Haversine formula
+    function getDistance(latlng1, latlng2) {
+      const R = 6371e3;
+      const φ1 = latlng1.lat * Math.PI / 180;
+      const φ2 = latlng2.lat * Math.PI / 180;
+      const Δφ = (latlng2.lat - latlng1.lat) * Math.PI / 180;
+      const Δλ = (latlng2.lng - latlng1.lng) * Math.PI / 180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c;
+    }
+
+    // Hardcoded congestion points
+    const congestionPoints = [
+      { lat: 33.64364195047273, lon: 73.03048431873323 },
+      { lat: 33.64673079212212, lon: 73.03648710250856 },
+      { lat: 33.64364195047273, lon: 73.03048431873323 },
+      { lat: 33.64673079212212, lon: 73.03648710250856 },
+      { lat: 33.64364195047273, lon: 73.03048431873323 },
+      { lat: 33.64673079212212, lon: 73.03648710250856 }
+    ];
+
+    // Call congestion function directly with hardcoded points
+    showCongestedSegments(congestionPoints);
+
+    // Show congested segments on the map (highlighted in red)
+    function showCongestedSegments(points) {
+      if (!points || points.length < 2) return;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const from = [points[i].lat, points[i].lon];
+        const to = [points[i + 1].lat, points[i + 1].lon];
+        
+        L.polyline([from, to], {
+          color: 'red',
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '6, 8'
+        }).addTo(map);
+      }
+
+      alert('🚨 Congested segment highlighted on the map!');
+    }
+  </script>
+
+</body>
+</html>

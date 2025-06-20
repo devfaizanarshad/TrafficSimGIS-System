@@ -198,6 +198,52 @@ const UserTable = () => {
     );
   };
 
+    const hideUser = async (user) => {
+    toast.info(
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-gray-800">Confirm Hiding User</h3>
+        <p className="mt-2 text-gray-600">
+          Are you sure you want to Hide <span className="font-medium">{user.username}</span>?
+        </p>
+        <div className="flex justify-end mt-4 space-x-3">
+          <button 
+            onClick={() => toast.dismiss()}
+            className="px-4 py-2 text-gray-700 transition bg-gray-200 rounded-md hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 text-white transition bg-red-500 rounded-md hover:bg-red-600"
+            onClick={async () => {
+              toast.dismiss();
+              try {
+                const response = await axios.patch(
+                  `http://localhost:3000/api/admin/hide-employee/${user.employee_id}`
+                );
+
+                if (response.status === 200) {
+                  toast.success("User Hiden successfully!");
+                } else {
+                  toast.error("Failed to Hide user");
+                }
+              } catch (error) {
+                console.error("Error Hiding user:", error);
+                toast.error("An error occurred while Hidding the user");
+              }
+            }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>,
+      {
+        autoClose: false,
+        closeOnClick: false,
+        closeButton: false
+      }
+    );
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       (user.username?.toLowerCase().includes(search.toLowerCase()) ||
@@ -364,14 +410,37 @@ const UserTable = () => {
                             title="View details"
                           >
                             <FiEye size={18} />
+
                           </button>
-                          <NavLink
-                            to={`/admin/edit-user/${user.user_id}`}
-                            className="text-green-600 transition hover:text-green-900"
-                            title="Edit"
-                          >
-                            <FiEdit size={18} />
-                          </NavLink>
+
+{user.role.toLowerCase() === 'employee'?(
+    <button
+  onClick={() => hideUser(user)}
+  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+    user.is_hidden
+      ? "bg-green-100 text-green-800 hover:bg-green-200"
+      : "bg-red-100 text-red-800 hover:bg-red-200"
+  }`}
+  title={user.is_hidden ? "Show this user" : "Hide this user from view"}
+>
+  {user.is_hidden ? "Show User" : "Hide User"}
+</button>
+)
+:
+(
+<button
+  disabled
+  className="px-3 py-1 text-sm font-medium text-gray-400 bg-gray-100 rounded cursor-not-allowed"
+  title="User visibility cannot be modified for managers"
+>
+  {user.is_hidden ? "Show User" : "Hide User"}
+</button>
+)
+  
+}
+
+
+
                           <button
                             onClick={() => deleteUser(user)}
                             className="text-red-600 transition hover:text-red-900"

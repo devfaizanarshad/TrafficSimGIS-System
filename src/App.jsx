@@ -37,10 +37,14 @@ import Mygeofence from "./Employees/mygeofence";
 import EmployeeLayout from "./layouts/EmployeeLayout";
 import Login from "./Login";
 import EmployeeMovementHistory from "./BranchManager/Tracking/EmployeeMovementHistory";
+import Maplayers from "./MapAdmin/Maplayers";
+import { ToastContainer } from 'react-toastify';
+
 
 
 function App() {
   return (
+
     <Router>
       <Routes>
         <Route
@@ -193,10 +197,10 @@ function App() {
 />
 
 <Route
-  path="/map-admin/setting"
+  path="/map-admin/layer"
   element={
     <MapAdminDashboardLayout >
-      <Settings />
+      <Maplayers />
     </MapAdminDashboardLayout >
   }
   

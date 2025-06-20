@@ -6,6 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { FiUser, FiCalendar, FiAlertTriangle, FiArrowRight, FiArrowLeft, FiFilter, FiX } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { io } from 'socket.io-client';
 import { MapContext } from '../../Context/Context';
 
 export default function AllViolations() {
@@ -19,6 +20,8 @@ export default function AllViolations() {
   const [itemsPerPage] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
   const {managerId} = useContext(MapContext) ;
+  // const violationSoundUrl = "https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3"; 
+
 
   // Fetch employees
   useEffect(() => {
@@ -52,6 +55,42 @@ export default function AllViolations() {
     }
     getEmployeesViolations();
   }, []);
+
+  // Socket connection for real-time notifications
+  //   useEffect(() => {
+
+  //   const socket = io("http://localhost:4000"); 
+  //   const audio = new Audio(violationSoundUrl);
+
+  //   socket.on("connect", () => {
+  //     console.log("Connected to server with ID:", socket.id);
+  //   });
+
+  //   socket.on("pushNotification", (data) => {
+  //     console.log("Notification received:", data);
+  //   // Play alert sound
+  //   audio.play().catch((err) => {
+  //     console.error("Audio play failed:", err);
+  //   });
+
+  //   // Show toast with details
+  //   toast.error(
+  //     `Violation Alert!\n${data.message}\nEmployee ID: ${data.employeeId}`,
+  //     {
+  //       position: "top-center",
+  //       autoClose: 8000,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //       theme: "colored",
+  //     }
+  //   );
+  //   });
+
+  //   return () => {
+  //     socket.disconnect(); 
+  //   };
+  // }, []);
 
   // Custom select styles
   const selectStyles = {
@@ -355,9 +394,10 @@ export default function AllViolations() {
               </div>
             )}
           </div>
+          
         )}
+        <ToastContainer position="top-center" autoClose={3000} style={{ zIndex: 9999 }} />
       </div>
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 }

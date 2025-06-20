@@ -166,9 +166,13 @@ const SleekRouteUI = () => {
       const res = await fetch(url);
       const data = await res.json();
 
+      console.log("Route response:", data);
+
       if (data.paths && data.paths.length > 0) {
         const path = data.paths[0];
         const coords = decodePolyline(path.points);
+
+        console.log("Decoded route coordinates:", coords);
 
         const congestedPoints = await checkCongestion(coords);
         animateRoute(coords, congestedPoints);
@@ -198,6 +202,9 @@ const SleekRouteUI = () => {
       });
 
       const data = await response.json();
+
+      console.log('Congestion check response:', data);
+      
 
       if (data.result && data.result.status === "Segment is Congested") {
         return data.result.matchedPoints;

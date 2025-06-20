@@ -94,15 +94,21 @@ const EmployeeTracking = () => {
             `http://localhost:3000/api/manager/employee/${emp.employee_id}/location`
           );
           locations[emp.employee_id] = locRes.data;
+          console.log(`Location Data : ${emp.employee_id} `, locRes.data);
+
 
           // Fetch geofences
           const geoRes = await axios.get(
             `http://localhost:3000/api/employee/my-geofences/${emp.employee_id}`
           );
           geofences[emp.employee_id] = geoRes.data.geofences;
+          console.log(`Geofence Data : ${emp.employee_id} `, geoRes.data.geofences);
+
         } catch (err) {
           console.error(`Error fetching data for ${emp.employee_id}:`, err);
         }
+
+        
       }));
 
       setEmployeeLocations(locations);
@@ -163,7 +169,7 @@ const EmployeeTracking = () => {
           <div className="flex items-center mt-2 space-x-4 md:mt-0">
             <div className="flex items-center">
               <div className="w-3 h-3 mr-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm">Within Geofence</span>
+              <span className="text-sm">Safe Zone</span>
             </div>
             <div className="flex items-center">
               <div className="w-3 h-3 mr-2 bg-red-500 rounded-full"></div>

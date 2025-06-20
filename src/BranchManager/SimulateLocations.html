@@ -76,6 +76,25 @@
             border-bottom: 1px solid #bdc3c7;
             font-size: 12px;
         }
+        .geofence-info {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #dfe6e9;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .geofence-info:hover {
+            background-color: #bdc3c7;
+        }
+        .geofence-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .popup-content {
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -115,6 +134,7 @@
         let simulationMode = false;
         let pathPolyline = null;
         let pathCoordinates = [];
+        let currentGeofenceMarkers = [];
 
         function initMap() {
             map = L.map('simulation-map').setView([33.6844, 73.0479], 13);
@@ -126,11 +146,9 @@
 
         async function loadEmployees() {
             try {
-                const response = await fetch('http://localhost:3000/api/manager/1/employees',{
-
-          withCredentials: true
-
-      });
+                const response = await fetch('http://localhost:3000/api/manager/1/employees', {
+                    withCredentials: true
+                });
                 const data = await response.json();
                 const employees = data.employees;
                 const dropdown = document.getElementById('employee-dropdown');
@@ -147,7 +165,7 @@
                     currentEmployee = dropdown.value;
                     if (currentEmployee) {
                         await loadEmployeeDetails(currentEmployee);
-                        await loadGeofence(currentEmployee);
+                        await loadGeofences(currentEmployee);
                     } else {
                         clearEmployeeData();
                     }
@@ -160,11 +178,9 @@
 
         async function loadEmployeeDetails(employeeId) {
             try {
-                const response = await fetch(`http://localhost:3000/api/employee/my-profile/${employeeId}`,{
-
-          withCredentials: true
-
-      });
+                const response = await fetch(`http://localhost:3000/api/employee/my-profile/${employeeId}`, {
+                    withCredentials: true
+                });
                 const data = await response.json();
                 const employee = data.profile;
                 
@@ -181,40 +197,197 @@
             }
         }
 
-        async function loadGeofence(employeeId) {
+        async function loadGeofences(employeeId) {
             try {
+                // Clear existing geofences for this employee
                 if (geofencePolygons[employeeId]) {
-                    map.removeLayer(geofencePolygons[employeeId]);
+                    geofencePolygons[employeeId].forEach(polygon => {
+                        if (polygon && polygon.remove) {
+                            map.removeLayer(polygon);
+                        }
+                    });
                     delete geofencePolygons[employeeId];
                 }
                 
-                const response = await fetch(`http://localhost:3000/api/employee/my-geofences/${employeeId}`, 
-                    {
-
-          withCredentials: true
-
-      }
-                );
+                const response = await fetch(`http://localhost:3000/api/employee/my-geofences/${employeeId}`, {
+                    withCredentials: true
+                });
                 const data = await response.json();
                 const geofences = data.geofences;
 
                 if (geofences.length > 0) {
-                    const geofence = geofences[0];
-                    const coordinates = geofence.geofence_boundary.map(point => [point.latitude, point.longitude]);
-                    coordinates.push(coordinates[0]); 
+                    geofencePolygons[employeeId] = [];
+                    const bounds = [];
                     
-                    const polygon = L.polygon(coordinates, {
-                        color: geofence.type === 'Authorized' ? 'green' : 'red',
-                        fillOpacity: 0.2,
-                        weight: 2
-                    }).addTo(map);
+                    // Create geofence info display
+                    const geofenceInfoContainer = document.createElement('div');
+                    geofenceInfoContainer.className = 'geofence-info-container';
+                    geofenceInfoContainer.innerHTML = '<h4>Geofences (click to zoom)</h4>';
                     
-                    geofencePolygons[employeeId] = polygon;
-                    map.fitBounds(polygon.getBounds());
+                    geofences.forEach((geofence, index) => {
+                        const coordinates = geofence.geofence_boundary.map(point => [point.latitude, point.longitude]);
+                        coordinates.push(coordinates[0]); // Close the polygon
+                        
+                        const color = geofence.type === 'Authorized' ? 'green' : 'red';
+                        const polygon = L.polygon(coordinates, {
+                            color: color,
+                            fillOpacity: 0.2,
+                            weight: 2
+                        }).addTo(map);
+                        
+                        // Add click handler to populate locations and zoom
+                        polygon.on('click', async (e) => {
+                            // Zoom to this geofence with some padding
+                            map.fitBounds(polygon.getBounds().pad(0.2));
+                            
+                            // Clear previous markers
+                            clearCurrentGeofenceMarkers();
+                            
+                            // Generate and show sample locations within this geofence
+                            const locations = generateSampleLocationsWithinGeofence(coordinates);
+                            showLocationsInGeofence(locations, polygon);
+                            
+                        });
+                        
+                        geofencePolygons[employeeId].push(polygon);
+                        bounds.push(polygon.getBounds());
+                        
+                        // Add geofence info to sidebar with click handler
+                        const geofenceInfo = document.createElement('div');
+                        geofenceInfo.className = 'geofence-info';
+                        geofenceInfo.innerHTML = `
+                            <div class="geofence-title">Geofence #${index + 1}</div>
+                            <div>Type: <span style="color: ${color}">${geofence.type}</span></div>
+                            <div>Description: ${geofence.description || 'N/A'}</div>
+                        `;
+                        
+                        // Add click handler to sidebar items
+                        geofenceInfo.addEventListener('click', () => {
+                            map.fitBounds(polygon.getBounds().pad(0.2));
+                            polygon.fire('click');
+                        });
+                        
+                        geofenceInfoContainer.appendChild(geofenceInfo);
+                    });
+                    
+                    // Add geofence info to employee details
+                    const employeeDetails = document.getElementById('employee-details');
+                    const existingContainer = employeeDetails.querySelector('.geofence-info-container');
+                    if (existingContainer) {
+                        employeeDetails.removeChild(existingContainer);
+                    }
+                    employeeDetails.appendChild(geofenceInfoContainer);
+                    
+                    // Fit map to show all geofences
+                    if (bounds.length > 0) {
+                        const group = new L.featureGroup(bounds);
+                        map.fitBounds(group.getBounds().pad(0.2));
+                    }
                 }
             } catch (error) {
-                console.error('Error loading geofence:', error);
+                console.error('Error loading geofences:', error);
             }
+        }
+
+        function generateSampleLocationsWithinGeofence(coordinates) {
+            // Simple algorithm to generate points within a polygon
+            // Note: This is a simplified approach - for production use a proper point-in-polygon algorithm
+            
+            // Get bounds of the polygon
+            const bounds = L.latLngBounds(coordinates);
+            const locations = [];
+            
+            // Generate 10 random points within bounds and check if they're in the polygon
+            for (let i = 0; i < 10; i++) {
+                let point;
+                let attempts = 0;
+                const maxAttempts = 100;
+                
+                do {
+                    point = [
+                        bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth()),
+                        bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest())
+                    ];
+                    attempts++;
+                } while (!isPointInPolygon(point, coordinates) && attempts < maxAttempts);
+                
+                if (attempts < maxAttempts) {
+                    locations.push({
+                        lat: point[0],
+                        lng: point[1],
+                        timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
+                    });
+                }
+            }
+            
+            return locations;
+        }
+
+        function isPointInPolygon(point, vs) {
+            // Ray-casting algorithm for point-in-polygon detection
+            const x = point[0], y = point[1];
+            let inside = false;
+            
+            for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                const xi = vs[i][0], yi = vs[i][1];
+                const xj = vs[j][0], yj = vs[j][1];
+                
+                const intersect = ((yi > y) !== (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+
+        function showLocationsInGeofence(locations, polygon) {
+            clearCurrentGeofenceMarkers();
+            
+            locations.forEach(location => {
+                const marker = L.marker([location.lat, location.lng], {
+                    icon: L.divIcon({
+                        className: 'geofence-location-marker',
+                        html: '<div style="background-color: #3498db; width: 10px; height: 10px; border-radius: 50%;"></div>',
+                        iconSize: [10, 10]
+                    })
+                }).addTo(map);
+                
+                
+                currentGeofenceMarkers.push(marker);
+            });
+        }
+
+        function clearCurrentGeofenceMarkers() {
+            currentGeofenceMarkers.forEach(marker => {
+                if (marker && marker.remove) {
+                    marker.remove();
+                }
+            });
+            currentGeofenceMarkers = [];
+        }
+
+        function createPopupContent(locations, geofence) {
+            let content = `
+                <div class="popup-content">
+                    <h3>${geofence.type} Geofence</h3>
+                    <p>${geofence.description || 'No description'}</p>
+                    <h4>Sample Locations (${locations.length})</h4>
+                    <ul style="padding-left: 15px;">
+            `;
+            
+            locations.forEach(loc => {
+                content += `
+                    <li>${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)} 
+                    <small>(${loc.timestamp.toLocaleTimeString()})</small></li>
+                `;
+            });
+            
+            content += `
+                    </ul>
+                </div>
+            `;
+            
+            return content;
         }
 
         function clearEmployeeData() {
@@ -223,9 +396,15 @@
             updateStatus('Ready to simulate', 'status-neutral');
             
             if (currentEmployee && geofencePolygons[currentEmployee]) {
-                map.removeLayer(geofencePolygons[currentEmployee]);
+                geofencePolygons[currentEmployee].forEach(polygon => {
+                    if (polygon && polygon.remove) {
+                        map.removeLayer(polygon);
+                    }
+                });
                 delete geofencePolygons[currentEmployee];
             }
+            
+            clearCurrentGeofenceMarkers();
         }
 
         function updateStatus(message, statusClass) {
@@ -258,8 +437,8 @@
                 return;
             }
             
-            if (!geofencePolygons[currentEmployee]) {
-                alert('No geofence defined for this employee');
+            if (!geofencePolygons[currentEmployee] || geofencePolygons[currentEmployee].length === 0) {
+                alert('No geofences defined for this employee');
                 return;
             }
             
@@ -285,18 +464,11 @@
 
         async function handleMapClick(e) {
             const { lat, lng } = e.latlng;
-
-
-            console.log(lat , lng);
-            console.log(currentEmployee);
-            
-            
             
             try {
                 updateStatus('Checking location...', 'status-neutral');
                 
-                const response = await fetch(`http://localhost:3000/api/location/${currentEmployee}/add-location`,
-                {
+                const response = await fetch(`http://localhost:3000/api/location/${currentEmployee}/add-location`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -343,6 +515,8 @@
                 }
             });
             employeeMarkers = {};
+            
+            clearCurrentGeofenceMarkers();
             
             simulationMode = false;
             document.getElementById('simulate-btn').textContent = 'Start Simulation';

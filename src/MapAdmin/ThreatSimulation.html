@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Threat Zone Mapper</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #controls {
+      padding: 10px;
+      background: #2c3e50;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #controls button, #controls select {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button {
+      background: #e74c3c;
+      color: white;
+    }
+    select {
+      background: white;
+    }
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+    .status {
+      color: white;
+      padding: 8px;
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button onclick="startDrawing()">✏️ Draw Polygon</button>
+    <button onclick="clearMap()">🧹 Clear</button>
+    <button onclick="saveThreat()">💾 Save</button>
+    
+    <select id="threatLevel">
+      <option value="high">High Threat</option>
+      <option value="medium" selected>Medium Threat</option>
+      <option value="low">Low Threat</option>
+    </select>
+    
+    <input type="time" id="startTime">
+    <input type="time" id="endTime">
+    
+    <div class="status" id="status">Ready</div>
+  </div>
+  
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    // Initialize map (centered on Rawalpindi)
+    const map = L.map('map').setView([33.6844, 73.0479], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Drawing variables
+    let drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    let currentPoly = null;
+    let isDrawing = false;
+
+    // Get color based on threat level
+    function getThreatColor(level) {
+      return {
+        high: '#e74c3c',    // Red
+        medium: '#f39c12',  // Orange
+        low: '#2ecc71'      // Green
+      }[level];
+    }
+
+    // Start drawing mode
+    function startDrawing() {
+      clearMap();
+      isDrawing = true;
+      document.getElementById('status').textContent = "Drawing mode - click to place points, double-click to finish";
+      alert("Click on the map to start drawing your threat zone. Double-click to finish.");
+    }
+
+    // Clear the map
+    function clearMap() {
+      drawnItems.clearLayers();
+      currentPoly = null;
+      isDrawing = false;
+      document.getElementById('status').textContent = "Ready";
+    }
+
+    // Handle map clicks
+    map.on('click', function(e) {
+      if (!isDrawing) return;
+      
+      if (!currentPoly) {
+        // Start new polygon
+        currentPoly = L.polygon([e.latlng], {
+          color: getThreatColor(document.getElementById('threatLevel').value),
+          fillOpacity: 0.4,
+          weight: 2
+        }).addTo(drawnItems);
+      } else {
+        // Add point to existing polygon
+        currentPoly.addLatLng(e.latlng);
+      }
+    });
+
+    // Finish drawing on double click
+    map.on('dblclick', function() {
+      if (isDrawing && currentPoly) {
+        // Need at least 3 points for a valid polygon
+        if (currentPoly.getLatLngs()[0].length >= 3) {
+          isDrawing = false;
+          document.getElementById('status').textContent = "Polygon complete - ready to save";
+        } else {
+          alert("A polygon needs at least 3 points!");
+        }
+      }
+    });
+
+    // Save to backend
+    function saveThreat() {
+      const threatLevel = document.getElementById('threatLevel').value;
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+      
+      if (!startTime || !endTime) {
+        alert("Please set both start and end times");
+        return;
+      }
+
+      const layers = drawnItems.getLayers();
+      if (layers.length === 0) {
+        alert("Please draw at least one threat zone");
+        return;
+      }
+
+      const threatData = {
+        threat_level: threatLevel,
+        start_time: startTime,
+        end_time: endTime,
+        path: layers[0].getLatLngs()[0].map(ll => [ll.lng, ll.lat])
+      };
+
+      console.log("Saving threat:", threatData);
+
+      fetch('http://localhost:3000/api/location/threat-simulation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(threatData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert("Threat zone saved successfully!");
+        console.log("Server response:", data);
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert("Failed to save threat zone");
+      });
+    }
+  </script>
+</body>
+</html>

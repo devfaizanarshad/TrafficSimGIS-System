@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
 import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FiClock, FiCalendar, FiAlertCircle, FiCheckCircle, FiMapPin, FiUser } from 'react-icons/fi';
+import { FiClock, FiCalendar, FiAlertCircle, FiCheckCircle, FiMapPin, FiUser, FiAlertTriangle } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 // Fix marker icons
@@ -44,6 +44,7 @@ export default function MyGeofence() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mapBounds, setMapBounds] = useState(null);
   const {employeeId} = useContext(MapContext);
+  const [activeVoilation, setActiveVoilation] = useState(true);
   const mapRef = useRef();
 
   useEffect(() => {

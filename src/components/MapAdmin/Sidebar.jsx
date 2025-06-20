@@ -8,7 +8,7 @@ const SideBar = () => {
   const menuItems = [
     { name: "Locations", icon: FaUserCog, path: "/map-admin" },
     { name: "Routes", icon: FaMapMarkedAlt, path: "/map-admin/route" },
-    { name: "Settings", icon: FaCogs, path: "/map-admin/setting" }
+    { name: "Location Layers", icon: FaCogs, path: "/map-admin/layer" }
   ];
 
   return (

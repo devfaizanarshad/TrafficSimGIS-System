@@ -3,176 +3,510 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Threat Zone Mapper</title>
+  <title>Threat Zone Creator</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+      min-height: 100vh;
     }
-    #controls {
-      padding: 10px;
-      background: #2c3e50;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
     }
-    #controls button, #controls select {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button {
-      background: #e74c3c;
-      color: white;
-    }
-    select {
+    .card {
       background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(to right, #3b82f6, #6366f1);
+      color: white;
+      padding: 20px 24px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    .content {
+      padding: 24px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+    .required:after {
+      content: " *";
+      color: #ef4444;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
     #map {
-      height: 90vh;
+      height: 400px;
       width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 24px;
     }
-    .status {
+    .points-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .points-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+    .clear-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .points-container {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .empty-state {
+      padding: 24px;
+      text-align: center;
+      background: #f9fafb;
+      color: #6b7280;
+    }
+    .empty-state i {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: #9ca3af;
+    }
+    .empty-state p {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+    .points-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .point-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .point-item:last-child {
+      border-bottom: none;
+    }
+    .point-info h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+    }
+    .point-info p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+    }
+    .delete-btn:hover {
+      background: #fee2e2;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 24px;
+    }
+    .submit-btn {
+      background: #3b82f6;
       color: white;
-      padding: 8px;
-      margin-left: auto;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover {
+      background: #2563eb;
+    }
+    .submit-btn:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+    }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button onclick="startDrawing()">✏️ Draw Polygon</button>
-    <button onclick="clearMap()">🧹 Clear</button>
-    <button onclick="saveThreat()">💾 Save</button>
-    
-    <select id="threatLevel">
-      <option value="high">High Threat</option>
-      <option value="medium" selected>Medium Threat</option>
-      <option value="low">Low Threat</option>
-    </select>
-    
-    <input type="time" id="startTime">
-    <input type="time" id="endTime">
-    
-    <div class="status" id="status">Ready</div>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>Create New Threat Zone</h1>
+        <p>Define boundaries by clicking on the map</p>
+      </div>
+      
+      <div class="content">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="startTime" class="required">Start Time</label>
+            <input type="time" id="startTime" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="endTime" class="required">End Time</label>
+            <input type="time" id="endTime" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="locationType" class="required">Location Type</label>
+          <select id="locationType" required>            
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="threatLevel" class="required">Threat Level</label>
+          <select id="threatLevel" required>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </div>
+        
+        <div id="map"></div>
+        
+        <div class="form-group">
+          <div class="points-header">
+            <span class="points-title">Boundary Points (<span id="pointsCount">0</span>)</span>
+            <button id="clearPoints" class="clear-btn" disabled>
+              <i class="fas fa-trash-alt"></i> Clear All
+            </button>
+          </div>
+          
+          <div class="points-container">
+            <div id="emptyState" class="empty-state">
+              <i class="fas fa-map-marker-alt"></i>
+              <p>Click on the map to add boundary points</p>
+              <p>Minimum 3 points required</p>
+            </div>
+            
+            <ul id="pointsList" class="points-list" style="display: none;"></ul>
+          </div>
+        </div>
+        
+        <div class="actions">
+          <button id="submitBtn" class="submit-btn" disabled>
+            <i class="fas fa-save"></i> Create Threat Zone
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-  
-  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script>
     // Initialize map (centered on Rawalpindi)
-    const map = L.map('map').setView([33.6844, 73.0479], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    const map = L.map('map').setView([33.6844, 73.0479], 13);
+    L.tileLayer('http://localhost:9090/tile/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+    
+    //fetch locations types from server
+    async function fetchLocationTypes() {
 
-    // Drawing variables
-    let drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-    let currentPoly = null;
-    let isDrawing = false;
-
-    // Get color based on threat level
-    function getThreatColor(level) {
-      return {
-        high: '#e74c3c',    // Red
-        medium: '#f39c12',  // Orange
-        low: '#2ecc71'      // Green
-      }[level];
-    }
-
-    // Start drawing mode
-    function startDrawing() {
-      clearMap();
-      isDrawing = true;
-      document.getElementById('status').textContent = "Drawing mode - click to place points, double-click to finish";
-      alert("Click on the map to start drawing your threat zone. Double-click to finish.");
-    }
-
-    // Clear the map
-    function clearMap() {
-      drawnItems.clearLayers();
-      currentPoly = null;
-      isDrawing = false;
-      document.getElementById('status').textContent = "Ready";
-    }
-
-    // Handle map clicks
-    map.on('click', function(e) {
-      if (!isDrawing) return;
-      
-      if (!currentPoly) {
-        // Start new polygon
-        currentPoly = L.polygon([e.latlng], {
-          color: getThreatColor(document.getElementById('threatLevel').value),
-          fillOpacity: 0.4,
-          weight: 2
-        }).addTo(drawnItems);
-      } else {
-        // Add point to existing polygon
-        currentPoly.addLatLng(e.latlng);
+     const res = await fetch(`http://localhost:3000/api/layers/type/threat`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
-    });
-
-    // Finish drawing on double click
-    map.on('dblclick', function() {
-      if (isDrawing && currentPoly) {
-        // Need at least 3 points for a valid polygon
-        if (currentPoly.getLatLngs()[0].length >= 3) {
-          isDrawing = false;
-          document.getElementById('status').textContent = "Polygon complete - ready to save";
-        } else {
-          alert("A polygon needs at least 3 points!");
-        }
-      }
-    });
-
-    // Save to backend
-    function saveThreat() {
-      const threatLevel = document.getElementById('threatLevel').value;
-      const startTime = document.getElementById('startTime').value;
-      const endTime = document.getElementById('endTime').value;
-      
-      if (!startTime || !endTime) {
-        alert("Please set both start and end times");
-        return;
-      }
-
-      const layers = drawnItems.getLayers();
-      if (layers.length === 0) {
-        alert("Please draw at least one threat zone");
-        return;
-      }
-
-      const threatData = {
-        threat_level: threatLevel,
-        start_time: startTime,
-        end_time: endTime,
-        path: layers[0].getLatLngs()[0].map(ll => [ll.lng, ll.lat])
-      };
-
-      console.log("Saving threat:", threatData);
-
-      fetch('http://localhost:3000/api/location/threat-simulation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(threatData)
-      })
-      .then(response => response.json())
-      .then(data => {
-        alert("Threat zone saved successfully!");
-        console.log("Server response:", data);
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to save threat zone");
+     });
+     const data = await res.json();
+     console.log(data);
+     // You may want to populate the select here, e.g.:
+     const locationTypeSelect = document.getElementById('locationType');
+     data.forEach(type => {
+     const option = document.createElement('option');
+     option.value = type.value;
+     option.textContent = type.label;
+     option.color = type.color || '#000'; // Default color if not provided
+     option.style.color = '#000'; // Set the color of the option text
+     locationTypeSelect.appendChild(option);
       });
     }
+    fetchLocationTypes();
+
+    // Drawing variables
+    const points = [];
+    let polygon = null;
+    const threatColors = {
+      'Low': '#10B981',
+      'Medium': '#F59E0B',
+      'High': '#EF4444',
+      'Critical': '#8B0000'
+    };
+
+    // DOM elements
+    const startTimeInput = document.getElementById('startTime');
+    const endTimeInput = document.getElementById('endTime');
+    const threatLevelSelect = document.getElementById('threatLevel');
+    const pointsCount = document.getElementById('pointsCount');
+    const clearPointsBtn = document.getElementById('clearPoints');
+    const emptyState = document.getElementById('emptyState');
+    const pointsList = document.getElementById('pointsList');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Set current time as default
+    const now = new Date();
+    startTimeInput.value = now.toTimeString().substring(0, 5);
+    endTimeInput.value = new Date(now.getTime() + 3600000).toTimeString().substring(0, 5);
+
+    // Map click handler
+    map.on('click', function(e) {
+      const point = [e.latlng.lat, e.latlng.lng];
+      points.push(point);
+      updatePointsDisplay();
+      drawPolygon();
+    });
+
+    // Update points display
+    function updatePointsDisplay() {
+      pointsCount.textContent = points.length;
+      
+      if (points.length === 0) {
+        emptyState.style.display = 'block';
+        pointsList.style.display = 'none';
+        clearPointsBtn.disabled = true;
+        submitBtn.disabled = true;
+      } else {
+        emptyState.style.display = 'none';
+        pointsList.style.display = 'block';
+        clearPointsBtn.disabled = false;
+        submitBtn.disabled = points.length < 3;
+        
+        // Update points list
+        pointsList.innerHTML = '';
+        points.forEach((point, index) => {
+          const li = document.createElement('li');
+          li.className = 'point-item';
+          li.innerHTML = `
+            <div class="point-info">
+              <h4>Point ${index + 1}</h4>
+              <p>${point[0].toFixed(6)}, ${point[1].toFixed(6)}</p>
+            </div>
+            <button class="delete-btn" data-index="${index}">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          `;
+          pointsList.appendChild(li);
+        });
+        
+        // Add event listeners to delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const index = parseInt(this.getAttribute('data-index'));
+            points.splice(index, 1);
+            updatePointsDisplay();
+            drawPolygon();
+          });
+        });
+      }
+    }
+
+    // Draw polygon on map
+    function drawPolygon() {
+      if (polygon) {
+        map.removeLayer(polygon);
+      }
+      
+      if (points.length >= 3) {
+        const threatLevel = threatLevelSelect.value;
+        polygon = L.polygon(points, {
+          color: threatColors[threatLevel],
+          fillOpacity: 0.4
+        }).addTo(map);
+      }
+    }
+
+    // Clear all points
+    clearPointsBtn.addEventListener('click', function() {
+      points.length = 0;
+      if (polygon) {
+        map.removeLayer(polygon);
+        polygon = null;
+      }
+      updatePointsDisplay();
+    });
+
+    // Update polygon color when threat level changes
+    threatLevelSelect.addEventListener('change', function() {
+      if (polygon) {
+        polygon.setStyle({
+          color: threatColors[this.value]
+        });
+      }
+    });
+
+    // Submit form
+    submitBtn.addEventListener('click', async function() {
+      if (points.length < 3) {
+        Toastify({
+          text: "At least 3 points are required to create a zone",
+          duration: 3000,
+          gravity: "top",
+          position: "center",
+          backgroundColor: "#ef4444",
+          stopOnFocus: true
+        }).showToast();
+        return;
+      }
+
+      if (!startTimeInput.value || !endTimeInput.value) {
+        Toastify({
+          text: "Please set both start and end times",
+          duration: 3000,
+          gravity: "top",
+          position: "center",
+          backgroundColor: "#ef4444",
+          stopOnFocus: true
+        }).showToast();
+        return;
+      }
+
+      if (startTimeInput.value >= endTimeInput.value) {
+        Toastify({
+          text: "End time must be after start time",
+          duration: 3000,
+          gravity: "top",
+          position: "center",
+          backgroundColor: "#ef4444",
+          stopOnFocus: true
+        }).showToast();
+        return;
+      }
+
+      // Disable button and show loading
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Creating...';
+
+      try {
+        // Prepare the data with only required fields
+        const requestData = {
+          path: points, // Array of [lat,lng] pairs
+          start_time: startTimeInput.value,
+          end_time: endTimeInput.value,
+          threat_level: threatLevelSelect.value
+        };
+
+        const response = await fetch("http://localhost:3000/api/location/threat-simulation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          Toastify({
+            text: "Zone created successfully!",
+            duration: 3000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#10B981",
+            stopOnFocus: true
+          }).showToast();
+
+          // Reset form
+          points.length = 0;
+          if (polygon) {
+            map.removeLayer(polygon);
+            polygon = null;
+          }
+          updatePointsDisplay();
+          threatLevelSelect.value = "Low";
+        } else {
+          throw new Error(data.message || "Failed to create zone");
+        }
+      } catch (error) {
+        console.error("Error creating zone:", error);
+        Toastify({
+          text: error.message || "Server error. Please try later",
+          duration: 3000,
+          gravity: "top",
+          position: "center",
+          backgroundColor: "#ef4444",
+          stopOnFocus: true
+        }).showToast();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Threat Zone';
+      }
+    });
+
+    // Initial setup
+    updatePointsDisplay();
   </script>
 </body>
 </html>

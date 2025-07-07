@@ -22,10 +22,10 @@ const MapAdminDashboardLayout = ({ children }) => {
         <Header setIsSidebarOpen={setIsSidebarOpen} />
 
         {/* Page Content */}
-        <div className="flex-1 p-6 overflow-hidden bg-white">
+        <div className="flex-1 p-6 overflow-auto overflow-x-hidden bg-white">
           <div
             id="map-container"
-            className="h-[calc(100vh-64px)] md:w-[calc(100%)] w-full overflow-hidden"
+            className="h-[calc(100vh-64px)] md:w-[calc(100%)] w-full"
           >
             {children}
           </div>

@@ -12,6 +12,7 @@ const SideBar = () => {
     { name: "Vehicle List", icon: FaWarehouse, path: "/branchmanager/assign-vehicle/all" },
     { name: "Tracking", icon: FaUserShield, path: "/branchmanager/employees-location-tracking" },
     { name: "Voilations", icon: FaUserCheck, path: "/branchmanager/All-voilations" },
+    { name: "All Movements", icon: FaChartBar, path: "/branchmanager/MovementHistory/all" }
   ];
 
   return (

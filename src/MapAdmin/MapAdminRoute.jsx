@@ -89,7 +89,7 @@ const SleekRouteUI = () => {
       dragging: true
     }).setView([33.6844, 73.0479], 12);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("http://localhost:9090/tile/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
       detectRetina: true
     }).addTo(map);
@@ -161,8 +161,10 @@ const SleekRouteUI = () => {
       return;
     }
 
+    console.log("Finding route from:", sourceCoords, "to:", destinationCoords);
+
     try {
-      const url = `http://localhost:8989/route?point=${sourceCoords.join(",")}&point=${destinationCoords.join(",")}&type=json&profile=car`;
+      const url = `http://localhost:8988/route?point=${sourceCoords.join(",")}&point=${destinationCoords.join(",")}&type=json&profile=car&debug=true&algorithm=alternative_route&alternative_route.max_paths=3&alternative_route.max_weight_factor=2`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -170,12 +172,21 @@ const SleekRouteUI = () => {
 
       if (data.paths && data.paths.length > 0) {
         const path = data.paths[0];
-        const coords = decodePolyline(path.points);
+        await Promise.all(
+          data.paths.map(async (p, index) => {
+            console.log(`Path ${index + 1}:`, p);
+            const coords = decodePolyline(p.points);
+            console.log("Decoded route coordinates:", coords);
+            const congestedPoints = await checkCongestion(coords);
+            animateRoute(coords, congestedPoints);
+          })
+        );
+        // const coords = decodePolyline(path.points);
 
-        console.log("Decoded route coordinates:", coords);
+        // console.log("Decoded route coordinates:", coords);
 
-        const congestedPoints = await checkCongestion(coords);
-        animateRoute(coords, congestedPoints);
+        // const congestedPoints = await checkCongestion(coords);
+        // animateRoute(coords, congestedPoints);
         
         setInstructions(path.instructions || []);
         
@@ -489,6 +500,7 @@ const SleekRouteUI = () => {
       </div>
     </div>
   );
+
 };
 
 export default SleekRouteUI;

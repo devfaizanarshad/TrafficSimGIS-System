@@ -37,7 +37,7 @@ const ListGeofences = () => {
         <div className="flex justify-end mt-4 space-x-3">
           <button 
             onClick={() => toast.dismiss()}
-            className="px-4 py-2 text-gray-700 transition bg-gray-200 rounded-md hover:bg-gray-300"
+            className="px-2 py-2 text-gray-700 transition bg-gray-200 rounded-md hover:bg-gray-300"
           >
             Cancel
           </button>
@@ -183,13 +183,13 @@ const ListGeofences = () => {
                           >
                             <FiEye className="w-5 h-5" />
                           </NavLink>
-                          <NavLink
+                          {/* <NavLink
                             to={`/admin/edit-geofence/${geo.geo_id}`}
                             className="p-2 text-green-600 transition-colors rounded-full hover:text-green-900 hover:bg-green-50"
                             title="Edit"
                           >
                             <FiEdit className="w-5 h-5" />
-                          </NavLink>
+                          </NavLink> */}
                           <button
                             onClick={() => deleteGeofence(geo.geo_id, geo.name)}
                             className="p-2 text-red-600 transition-colors rounded-full hover:text-red-900 hover:bg-red-50"

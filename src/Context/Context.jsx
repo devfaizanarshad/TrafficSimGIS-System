@@ -9,16 +9,19 @@ export const ContextProvider = ({children})=>{
     const [role , setRole] = useState(localStorage.getItem('role'));
     const [userName , setUserName] = useState(localStorage.getItem('username'));
     const [image , setImage] = useState(localStorage.getItem('image'));
+    const[userId, setUserId] = useState(localStorage.getItem('user_id'));
 useEffect(() => {
     const storedRole = localStorage.getItem('role');
     const storedUsername = localStorage.getItem('username');
     const storedImage = localStorage.getItem('image');
     const storedEmployeeId = localStorage.getItem('employee_id');
     const storedManagerId = localStorage.getItem('manager_id');
-    
+    const storedUserId = localStorage.getItem('user_id');
+
     setRole(storedRole);
     setUserName(storedUsername);
     setImage(storedImage);
+    setUserId(storedUserId);
 
     console.log("Before Context Manager:", storedManagerId);
     console.log("Before Context Employee:", storedEmployeeId);
@@ -40,7 +43,7 @@ useEffect(() => {
 
     return(
 
-        <MapContext.Provider value={{employeeId, setEmployeeId, managerId, setManagerId, role , setRole,setUserName , userName, image , setImage }}>
+        <MapContext.Provider value={{employeeId, setEmployeeId, managerId, setManagerId, role , setRole,setUserName , userName, image , setImage, userId, setUserId}}>
             {children}
         </MapContext.Provider>
 

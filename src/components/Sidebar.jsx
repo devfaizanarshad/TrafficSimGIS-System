@@ -10,7 +10,9 @@ const SideBar = () => {
     { name: "Users", icon: FaUserCog, path: "/admin/user-management" },
     { name: "Geofences", icon: FaMapMarkedAlt, path: "/admin/geofence-management" },
     { name: "Vehicles", icon: FaCar, path: "/admin/vehicle-management" },
-    { name: "Branches", icon: FaBuilding, path: "/admin/branch-management" }
+    { name: "Branches", icon: FaBuilding, path: "/admin/branch-management" },
+    { name: "User Layers ", icon: FaUsers, path: "/admin/assign-layer-to-user" },
+    { name: "Assigned Layers", icon: FaCogs, path: "/admin/assign-layer" },
     ];
 
   return (

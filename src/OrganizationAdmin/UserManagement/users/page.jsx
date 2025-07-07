@@ -333,7 +333,6 @@ const UserTable = () => {
               <option value="">All Roles</option>
               <option value="Employee">Employee</option>
               <option value="Manager">Manager</option>
-              <option value="Admin">Admin</option>
             </select>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Plus } from "lucide-react";
+import axios from "axios";
 
 const MapAdminPanel = () => {
   // Refs for DOM elements
@@ -13,6 +14,7 @@ const MapAdminPanel = () => {
   const [searchResults, setSearchResults] = useState([]); // Results from search API
   const [searchMarkers, setSearchMarkers] = useState([]); // Markers for search results
   const [isAddMarkerOpen, setIsAddMarkerOpen] = useState(false); // Controls form visibility
+  const [type, setType] = useState(""); // Type of location being added
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -33,7 +35,7 @@ const MapAdminPanel = () => {
     const map = L.map(mapContainerRef.current).setView([33.6844, 73.0479], 12);
 
     // Add OpenStreetMap tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("http://localhost:9090/tile/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
     }).addTo(map);
 
@@ -69,6 +71,17 @@ const MapAdminPanel = () => {
 
     // Store map instance in ref
     mapInstanceRef.current = map;
+
+    //fetch locations types from server
+    async function fetchLocationTypes() {
+
+     const res= await axios.get(`http://localhost:3000/api/layers/type/location`);
+     console.log(res.data);
+     setType(res.data);
+    }
+    fetchLocationTypes();
+
+
 
     // Cleanup function (empty since we want the map to persist)
     return () => {};
@@ -242,7 +255,7 @@ const MapAdminPanel = () => {
 
       {/* Add marker form modal */}
       {isAddMarkerOpen && (
-        <div className="absolute top-16 left-2 z-20 w-[320px] p-6 rounded-2xl shadow-2xl backdrop-blur-xl bg-white/50 border border-white/40">
+        <div className="absolute top-24 left-2 z-20 w-[320px] p-6 rounded-2xl shadow-2xl backdrop-blur-xl bg-white/50 border border-white/40">
           <h2 className="text-xl font-semibold text-gray-900">Add Location</h2>
           <form onSubmit={handleFormSubmit} className="space-y-4">
             <input
@@ -262,16 +275,12 @@ const MapAdminPanel = () => {
               className="w-full p-3 border border-gray-300 shadow-inner rounded-xl bg-white/70 focus:ring focus:ring-blue-300"
             />
             <select name="type" id="type" onChange={handleFormChange} value={formData.type} className="w-full p-3 border border-gray-300 rounded-xl bg-white/70 focus:ring focus:ring-blue-300">
-              <option value="" disabled selected>Select Type</option>
-              <option value="hospital">Hospital</option>
-              <option value="ptcl">PTCL Offices</option>
-              <option value="toll">Toll Plazas</option>
-              <option value="police">Police Stations</option>
-              <option value="school">Schools/Universities</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="atm">ATMs/Banks</option>
-              <option value="fuel">Fuel Stations</option>
-              <option value="park">Park</option>
+              <option value="" disabled>Select Type</option>
+              {type && type.map((item, index) => (
+                <option key={index} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
             </select>
 
             <input

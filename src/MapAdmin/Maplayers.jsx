@@ -1,174 +1,220 @@
-import React, { useEffect, useState } from 'react';
-import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from "react-leaflet";
+import React, { useEffect, useState, useContext } from 'react';
+import L from 'leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, Polygon, Polyline } from 'react-leaflet';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
-import { FiLayers, FiNavigation } from 'react-icons/fi';
+import { FiLayers, FiClock } from 'react-icons/fi';
+import { MapContext } from '../Context/Context.jsx';
 
-// Custom marker icons
-const iconMap = {
-  hospital: '/icons/hospital.png',
-  ptcl: '/icons/ptcl.png',
-  toll: '/icons/Toll.png',
-  police: '/icons/police(1).png',
-  school: '/icons/school.png',
-  restaurant: '/icons/restaurant.png',
-  atm: '/icons/atm.png',
-  fuel: '/icons/fuel.png',
-  park: '/icons/park (2).png',
-};
+// --------- Helper: Create custom Leaflet marker icon ---------
+const createCustomIcon = (url) =>
+  L.icon({
+    iconUrl: url,
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
+    popupAnchor: [0, -38],
+  });
 
-const createCustomIcon = (type) => L.icon({
-  iconUrl: iconMap[type],
-  iconSize: [38, 38],
-  iconAnchor: [19, 38],
-  popupAnchor: [0, -38],
-  className: `marker-${type}`
-});
+function MapLayers() {
+  // --------- State declarations ---------
+  const [userLayers, setUserLayers] = useState([]); // All assigned layers
+  const [activeLayer, setActiveLayer] = useState(null); // Currently selected layer
+  const [locations, setLocations] = useState([]); // Location-type data
+  const [threatLocations, setThreatLocations] = useState([]); // Threat polygons
+  const [lines, setLines] = useState([]); // Polyline routes
+  const [error, setError] = useState(null); // Display error
+  const [loading, setLoading] = useState(false); // Loading spinner
+  const { userId } = useContext(MapContext); // Current user ID
 
-const layerTypes = [
-  { id: 'hospital', name: 'Hospitals' },
-  { id: 'ptcl', name: 'PTCL Offices' },
-  { id: 'toll', name: 'Toll Plazas' },
-  { id: 'police', name: 'Police Stations' },
-  { id: 'school', name: 'Schools' },
-  { id: 'restaurant', name: 'Restaurants' },
-  { id: 'atm', name: 'ATMs/Banks' },
-  { id: 'fuel', name: 'Fuel Stations' },
-  { id: 'park', name: 'Parks' }
-];
+  // --------- Fetch assigned layers on mount ---------
+  useEffect(() => {
+    const fetchUserLayers = async () => {
+      try {
+        const res = await axios.get(`http://localhost:3000/api/layers/all`);
+        console.log("Fetched user layers:", res.data);
+        setUserLayers(res.data); // Each should include: id, name, type, image
+      } catch (err) {
+        console.error("Failed to fetch user layers:", err);
+      }
+    };
+    fetchUserLayers();
+  }, [userId]);
 
-function Maplayers() {
-  const [locations, setLocations] = useState([]);
-  const [activeLayer, setActiveLayer] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(null);
-
-  // Fetch locations when active layer changes
+  // --------- Fetch locations/threats/lines when a layer is selected ---------
   useEffect(() => {
     if (!activeLayer) return;
 
-    const fetchLocations = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        const res = await axios.post('http://localhost:3000/api/location/map-locations', { 
-          type: activeLayer 
-        });
-        setLocations(res.data);
-      } catch (err) {
-        console.error(`Error loading ${activeLayer} data:`, err);
-        setError(`Failed to load ${activeLayer} data`);
+        console.log(userLayers);
+        console.log(activeLayer);
+        
+        
+        const selected = userLayers.find(l => l.name === activeLayer);
+
+
+        console.log(selected)
+
+        if (!selected) return;
+
+        // Clear previous layers
         setLocations([]);
+        setThreatLocations([]);
+        setLines([]);
+
+        
+
+        if (selected.type === 'threat') {
+          const res = await axios.get(`http://localhost:3000/api/location/threat-simulation/${selected.name}`);
+          setThreatLocations(res.data.data);
+        } else if (selected.type === 'line') {
+          const res = await axios.get(`http://localhost:3000/api/location/map-lines/${selected.name}`);
+          setLines(res.data);
+        } else if (selected.type === 'location') {
+          const res = await axios.post('http://localhost:3000/api/location/map-locations', {
+            type: selected.name,
+          });
+          setLocations(res.data);
+        }
+      } catch (err) {
+        console.error(`Error fetching data for ${activeLayer}`, err);
+        setError('Failed to load layer data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLocations();
-  }, [activeLayer]);
+    fetchData();
+  }, [activeLayer, userLayers]);
 
+  // --------- Time formatting for threat zones ---------
+  const formatTime = (timeString) => {
+    const [hours, minutes] = timeString.split(':');
+    return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <div className="relative w-full h-screen">
+      {/* --------- Map Container --------- */}
       <MapContainer
         center={[33.6844, 73.0479]}
         zoom={12}
-        style={{ height: "100%", width: "100%" }}
-        className="z-0"
+        style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="http://localhost:9090/tile/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
         />
-        
         <ZoomControl position="topleft" />
 
-        {/* Render markers for active layer */}
-        {locations.map((location) => (
-          <Marker
-            key={`${location.loc_type}-${location.id}`}
-            position={[parseFloat(location.latitude), parseFloat(location.longitude)]}
-            icon={createCustomIcon(location.loc_type)}
-          >
-            <Popup className="custom-popup">
-              <div className="min-w-[250px]">
-                <h3 className="mb-2 text-lg font-bold text-blue-700">{location.name}</h3>
-                
-                
-                <p className="mb-3 text-sm text-gray-600">{location.description}</p>
-                
-                <div className="flex items-center justify-between">
-                  <span className="inline-block px-2 py-1 text-xs text-blue-800 bg-blue-100 rounded-full">
-                    {location.loc_type}
-                  </span>
-                  
-                  <div className="flex space-x-2">
-                    <button className="px-3 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600">
-                      Directions
-                    </button>
-                    <button className="px-3 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200">
-                      Details
-                    </button>
-                  </div>
+        {/* --------- Location Markers --------- */}
+        {locations.map((loc) => {
+          const matchedLayer = userLayers.find(l => l.name === activeLayer);
+          const iconUrl = matchedLayer?.image
+            ? `http://localhost:3000/uploads/${matchedLayer.image}`
+            : '';
+
+          return (
+            <Marker
+              key={`loc-${loc.id}`}
+              position={[parseFloat(loc.latitude), parseFloat(loc.longitude)]}
+              icon={createCustomIcon(iconUrl)}
+            >
+              <Popup>
+                <div>
+                  <h3 className="text-lg font-bold">{loc.name}</h3>
+                  <p className="text-sm text-gray-600">{loc.description}</p>
                 </div>
-              </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {/* --------- Threat Zones --------- */}
+        {threatLocations.map((threat) => (
+          <Polygon
+            key={`polygon-${threat.threat_id}`}
+            positions={threat.path}
+            color="red"
+            fillColor="red"
+          >
+            <Popup>
+              <h3 className="text-lg font-bold">{threat.threat_level}</h3>
+              <p className="text-sm text-gray-600">
+                <FiClock className="inline" /> {formatTime(threat.start_time)} - {formatTime(threat.end_time)}
+              </p>
             </Popup>
-          </Marker>
+          </Polygon>
         ))}
+
+        {/* --------- Line Layers --------- */}
+        {lines.map((line) => {
+          let color = 'gray', dashArray = null;
+          if (line.category.toLowerCase() === 'ptcl') color = '#7e22ce';
+          else if (line.category.toLowerCase() === 'railway') color = '#1e40af';
+          else if (line.category.toLowerCase() === 'highway') color = '#f59e0b';
+          else if (line.category.toLowerCase() === 'threat') {
+            color = '#dc2626';
+            dashArray = '6 6';
+          }
+
+          return (
+            <Polyline
+              key={`line-${line.id}`}
+              positions={line.coordinates.map(([lng, lat]) => [lat, lng])}
+              pathOptions={{ color, weight: 6, opacity: 0.8, dashArray }}
+            >
+              <Popup>
+                <h3 className="text-base font-bold">{line.name}</h3>
+                <p className="text-sm">{line.description}</p>
+              </Popup>
+            </Polyline>
+          );
+        })}
       </MapContainer>
 
-
-      {/* Layers Control Panel */}
-      <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg overflow-hidden w-64">
+      {/* --------- Layer Sidebar --------- */}
+      <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow w-72">
         <div className="flex items-center justify-between px-4 py-3 text-white bg-blue-600">
           <div className="flex items-center">
             <FiLayers className="mr-2" />
-            <span className="font-medium">Map Layers</span>
+            <span>Assigned Layers</span>
           </div>
-          {loading && (
-            <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
-          )}
+          {loading && <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>}
         </div>
-        
+
         <div className="p-3 max-h-[60vh] overflow-y-auto">
-          {layerTypes.map((layer) => (
-            <div 
+          {userLayers.map((layer) => (
+            <div
               key={layer.id}
-              onClick={() => setActiveLayer(layer.id)}
-              className={`flex items-center p-2 mb-1 rounded cursor-pointer transition ${activeLayer === layer.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'}`}
+              onClick={() => setActiveLayer(layer.name)}
+              className={`flex items-center p-2 rounded cursor-pointer mb-1 transition ${
+                activeLayer === layer.name ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+              }`}
             >
-              <img 
-                src={iconMap[layer.id]} 
-                alt={layer.id} 
-                className="object-contain w-6 h-6 mr-3" 
+              <img
+                src={`http://localhost:3000/uploads/${layer.image}`}
+                alt={layer.name}
+                className="object-contain w-6 h-6 mr-3"
               />
               <span className="text-sm font-medium text-gray-700">{layer.name}</span>
-              {activeLayer === layer.id && locations.length > 0 && (
-                <span className="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
-                  {locations.length}
-                </span>
-              )}
             </div>
           ))}
         </div>
       </div>
 
-
-      {/* Error Notification */}
+      {/* --------- Error Banner --------- */}
       {error && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-md max-w-xs">
+        <div className="absolute bottom-4 left-4 z-[1000] bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           <div className="flex items-center">
-            <span className="mr-2 text-red-500">⚠️</span>
+            <span className="mr-2">⚠️</span>
             <span className="text-sm">{error}</span>
-            <button 
-              onClick={() => setError(null)}
-              className="ml-auto text-red-500 hover:text-red-700"
-            >
-              &times;
-            </button>
+            <button onClick={() => setError(null)} className="ml-auto">&times;</button>
           </div>
         </div>
       )}
@@ -176,4 +222,4 @@ function Maplayers() {
   );
 }
 
-export default Maplayers;
+export default MapLayers;

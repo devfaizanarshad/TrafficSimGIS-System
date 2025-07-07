@@ -8,7 +8,10 @@ const SideBar = () => {
   const menuItems = [
     { name: "Locations", icon: FaUserCog, path: "/map-admin" },
     { name: "Routes", icon: FaMapMarkedAlt, path: "/map-admin/route" },
-    { name: "Location Layers", icon: FaCogs, path: "/map-admin/layer" }
+    { name: "Location Layers", icon: FaCogs, path: "/map-admin/layer" },
+    { name: "Create Threat", icon: FaUserCog, path: "/map-admin/createlayer" },
+    { name: "Draw Polyline", icon: FaTachometerAlt, path: "/map-admin/DrawPolyline" },
+    { name: "Create Layer", icon: FaUserCog, path: "/map-admin/create-layer" },
   ];
 
   return (

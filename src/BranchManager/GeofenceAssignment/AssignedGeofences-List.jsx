@@ -298,11 +298,12 @@ const AssignedGeofenceList = () => {
                         View Violations
                       </button>
                       <button
-                        onClick={() => handleDeactivate(g.geo_id, g.geofence_name)}
-                        className="flex items-center px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
+                          onClick={() => {
+                            window.location.href = `/branchmanager/TrackLocation/${g.employee_id}`;
+                          }}                         className="flex items-center px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
                       >
                         <FiTrash2 className="mr-2" />
-                        Remove Assignment
+                        Tacking Employee
                       </button>
                     </div>
                   </div>

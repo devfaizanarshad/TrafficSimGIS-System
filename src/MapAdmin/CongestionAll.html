@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Car Route Simulation</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #controls {
+      padding: 15px;
+      background: #ffffff;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 15px;
+      border-bottom: 1px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    #controls button {
+      padding: 8px 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+      font-size: 13px;
+    }
+    #controls button:hover {
+      background: #0056b3;
+    }
+    label {
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+    }
+    input[type="time"], input[type="number"], select {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+    }
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 8px;
+      border-radius: 5px;
+      background: #f8f9fa;
+      min-width: 180px;
+    }
+    .control-group-title {
+      font-weight: bold;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 5px;
+    }
+    .marker-color-1 { background-color: #FF5252; }
+    .marker-color-2 { background-color: #4CAF50; }
+    .marker-color-3 { background-color: #2196F3; }
+    .marker-color-4 { background-color: #FF9800; }
+    .marker-color-5 { background-color: #9C27B0; }
+    .marker-color-6 { background-color: #607D8B; }
+    .marker-color-7 { background-color: #795548; }
+    .marker-color-8 { background-color: #00BCD4; }
+    .marker-color-9 { background-color: #8BC34A; }
+    .marker-color-10 { background-color: #E91E63; }
+    .road-type-highway { color: #FF5722; }
+    .road-type-arterial { color: #673AB7; }
+    .road-type-local { color: #009688; }
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <div class="control-group">
+      <span class="control-group-title">Cars Configuration</span>
+      <button onclick="enableMarkerPlacement()">📍 Add Cars</button>
+      <label>Cars Count: <input type="number" id="carCount" min="1" max="20" value="3"></label>
+    </div>
+    
+    <div class="control-group">
+      <span class="control-group-title">Road Configuration</span>
+      <label>Road Type:
+        <select id="roadType">
+          <option value="highway" class="road-type-highway">Highway</option>
+          <option value="arterial" class="road-type-arterial">Arterial Road</option>
+          <option value="local" class="road-type-local" selected>Local Road</option>
+        </select>
+      </label>
+      <label>Speed Limit (km/h): <input type="number" id="speedLimit" min="20" max="120" value="50"></label>
+      <label>Max Capacity: <input type="number" id="maxCapacity" min="1" max="100" value="15"></label>
+    </div>
+    
+    <div class="control-group">
+      <span class="control-group-title">Path Drawing</span>
+      <button onclick="startDrawing()">✏️ Draw Path</button>
+      <button onclick="clearPath()">🧹 Clear</button>
+    </div>
+    
+    <div class="control-group">
+      <span class="control-group-title">Simulation</span>
+      <button onclick="startRide()">▶️ Start Ride</button>
+      <label>Car Speed (km/h):
+        <input type="range" id="speedSlider" min="10" max="120" step="5" value="40" oninput="updateSpeedLabel()">
+        <span id="speedLabel">40</span>
+      </label>
+    </div>
+    
+    <div class="control-group">
+      <span class="control-group-title">Time Settings</span>
+      <label>Start Time: <input type="time" id="startTimeInput" /></label>
+      <label>End Time: <input type="time" id="endTimeInput" /></label>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([33.6844, 73.0479], 14);
+    L.tileLayer('http://localhost:9090/tile/{z}/{x}/{y}.png').addTo(map);
+
+    // Road type configurations
+    const ROAD_TYPES = {
+      highway: {
+        name: "Highway",
+        defaultSpeedLimit: 100,
+        defaultCapacity: 30,
+        color: "#FF5722",
+        dashArray: null
+      },
+      arterial: {
+        name: "Arterial Road",
+        defaultSpeedLimit: 60,
+        defaultCapacity: 20,
+        color: "#673AB7",
+        dashArray: null
+      },
+      local: {
+        name: "Local Road",
+        defaultSpeedLimit: 40,
+        defaultCapacity: 10,
+        color: "#009688",
+        dashArray: "5, 5"
+      }
+    };
+
+    let cars = [];
+    let pathPoints = [];
+    let pathLine = null;
+    let drawing = false;
+    let markerPlacementMode = false;
+    let moveIndices = [];
+    let animationFrame = null;
+    let speedViolationCount = 0;
+    let currentRoadType = "local";
+
+    // Initialize road type settings
+    document.getElementById('roadType').addEventListener('change', function() {
+      currentRoadType = this.value;
+      const roadConfig = ROAD_TYPES[currentRoadType];
+      document.getElementById('speedLimit').value = roadConfig.defaultSpeedLimit;
+      document.getElementById('maxCapacity').value = roadConfig.defaultCapacity;
+      updatePathStyle();
+    });
+
+    function updatePathStyle() {
+      if (pathLine) {
+        const roadConfig = ROAD_TYPES[currentRoadType];
+        pathLine.setStyle({
+          color: roadConfig.color,
+          dashArray: roadConfig.dashArray
+        });
+      }
+    }
+
+    function updateSpeedLabel() {
+      const speed = document.getElementById("speedSlider").value;
+      document.getElementById("speedLabel").textContent = speed;
+      checkSpeedViolation();
+    }
+
+    function checkSpeedViolation() {
+      const carSpeed = parseInt(document.getElementById("speedSlider").value);
+      const speedLimit = parseInt(document.getElementById("speedLimit").value);
+      
+      if (carSpeed > speedLimit) {
+        speedViolationCount++;
+        console.warn(`⚠️ Speed violation detected! (${carSpeed} km/h in ${speedLimit} km/h ${currentRoadType})`);
+        if (speedViolationCount === 1) {
+          alert(`Warning: Car speed (${carSpeed} km/h) exceeds ${ROAD_TYPES[currentRoadType].name} speed limit (${speedLimit} km/h)`);
+        }
+      }
+    }
+
+    function enableMarkerPlacement() {
+      const carCount = parseInt(document.getElementById("carCount").value);
+      const maxCapacity = parseInt(document.getElementById("maxCapacity").value);
+      
+      if (carCount > maxCapacity) {
+        alert(`Error: Cannot add ${carCount} cars. Maximum capacity for this ${ROAD_TYPES[currentRoadType].name} is ${maxCapacity}`);
+        return;
+      }
+      
+      alert(`Click on the map ${carCount} times to place car markers.`);
+      markerPlacementMode = true;
+    }
+
+    function startDrawing() {
+      clearPath();
+      drawing = true;
+      alert("Click to draw path. Double click to finish.");
+    }
+
+    function clearPath() {
+      if (pathLine) map.removeLayer(pathLine);
+      pathPoints = [];
+      drawing = false;
+      moveIndices = [];
+      speedViolationCount = 0;
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      
+      cars.forEach(car => map.removeLayer(car.marker));
+      cars = [];
+    }
+
+    map.on('click', function(e) {
+      if (markerPlacementMode) {
+        const carCount = parseInt(document.getElementById("carCount").value);
+        
+        const carNumber = cars.length + 1;
+        const marker = L.marker(e.latlng, {
+          icon: new L.DivIcon({
+            className: `marker-color-${carNumber}`,
+            html: `<div style="text-align:center;font-weight:bold;">${carNumber}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 24]
+          })
+        }).addTo(map);
+        
+        const car = {
+          marker: marker,
+          number: carNumber,
+          speed: document.getElementById("speedSlider").value
+        };
+        cars.push(car);
+        
+        if (cars.length >= carCount) {
+          markerPlacementMode = false;
+        }
+      } else if (drawing) {
+        pathPoints.push(e.latlng);
+        if (pathLine) map.removeLayer(pathLine);
+        const roadConfig = ROAD_TYPES[currentRoadType];
+        pathLine = L.polyline(pathPoints, { 
+          color: roadConfig.color, 
+          weight: 5,
+          dashArray: roadConfig.dashArray
+        }).addTo(map);
+      }
+    });
+
+    map.on('dblclick', () => {
+      drawing = false;
+      alert("Path drawing finished.");
+    });
+
+    function interpolate(a, b, t) {
+      return {
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t
+      };
+    }
+
+    function animateMarkers() {
+      let allFinished = true;
+      
+      cars.forEach((car, index) => {
+        if (moveIndices[index] >= pathPoints.length - 1) {
+          return;
+        }
+        
+        allFinished = false;
+        
+        const from = pathPoints[moveIndices[index]];
+        const to = pathPoints[moveIndices[index] + 1];
+        const steps = 100;
+        let step = car.step || 0;
+        const delay = 3;
+
+        function stepFrame() {
+          if (step >= steps) {
+            moveIndices[index]++;
+            car.step = 0;
+            return;
+          }
+          const position = interpolate(from, to, step / steps);
+          car.marker.setLatLng(position);
+          step++;
+          car.step = step;
+          animationFrame = setTimeout(() => requestAnimationFrame(stepFrame), delay);
+        }
+
+        stepFrame();
+      });
+
+      if (allFinished) {
+        finalizeSimulation();
+        return;
+      }
+
+      requestAnimationFrame(animateMarkers);
+    }
+
+    function startRide() {
+      if (cars.length === 0 || pathPoints.length < 2) {
+        alert("Please add car markers and draw a valid path.");
+        return;
+      }
+
+      const startTime = document.getElementById("startTimeInput").value;
+      if (!startTime) {
+        alert("Please select a start time.");
+        return;
+      }
+
+      const maxCapacity = parseInt(document.getElementById("maxCapacity").value);
+      if (cars.length > maxCapacity) {
+        alert(`Error: ${cars.length} cars exceed ${ROAD_TYPES[currentRoadType].name} capacity of ${maxCapacity}`);
+        return;
+      }
+
+      console.log(`🛣️ Road Type: ${ROAD_TYPES[currentRoadType].name}`);
+      console.log(`🕒 Ride started at: ${startTime}`);
+      console.log(`🚗 Car count: ${cars.length}/${maxCapacity}`);
+      console.log(`🚦 Speed limit: ${document.getElementById("speedLimit").value} km/h`);
+
+      moveIndices = new Array(cars.length).fill(0);
+      cars.forEach(car => car.step = 0);
+      
+      const staggerDistance = Math.floor(pathPoints.length / cars.length);
+      moveIndices = moveIndices.map((_, i) => Math.min(i * staggerDistance, pathPoints.length - 2));
+      
+      animateMarkers();
+
+      setTimeout(() => {
+        const endTime = document.getElementById("endTimeInput").value;
+        if (!endTime) {
+          alert("Please select an end time.");
+          return;
+        }
+        console.log(`🕔 Ride ended at: ${endTime}`);
+        finalizeSimulation(startTime, endTime);
+      }, (pathPoints.length - 1) * 10);
+    }
+
+    function finalizeSimulation(startTime, endTime) {
+      const distMeters = getTotalDistance(pathPoints);
+      const speed = document.getElementById("speedSlider").value;
+      const speedLimit = document.getElementById("speedLimit").value;
+      const maxCapacity = document.getElementById("maxCapacity").value;
+      const isCongested = speed < speedLimit * 0.7; // Congested if below 70% of speed limit
+
+      const simulation = {
+        path: pathPoints.map(p => ({ lat: p.lat, lon: p.lng })),
+        road_type: currentRoadType,
+        road_name: ROAD_TYPES[currentRoadType].name,
+        speed: speed,
+        speed_limit: speedLimit,
+        start_time: startTime,
+        end_time: endTime,
+        is_congested: isCongested,
+        car_count: cars.length,
+        max_capacity: maxCapacity,
+        speed_violations: speedViolationCount,
+        distance_meters: distMeters,
+        distance_km: (distMeters / 1000).toFixed(2)
+      };
+
+      console.log("📊 Simulation Results:", JSON.stringify(simulation, null, 2));
+
+      fetch('http://localhost:3000/api/location/car-simulation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(simulation)
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Data received from backend:", data);
+        showCongestedSegments(data.points);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create simulation. Please try again.');
+      });
+    }
+
+    function getTotalDistance(points) {
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        total += getDistance(points[i-1], points[i]);
+      }
+      return total;
+    }
+
+    function getDistance(latlng1, latlng2) {
+      const R = 6371e3;
+      const φ1 = latlng1.lat * Math.PI / 180;
+      const φ2 = latlng2.lat * Math.PI / 180;
+      const Δφ = (latlng2.lat - latlng1.lat) * Math.PI / 180;
+      const Δλ = (latlng2.lng - latlng1.lng) * Math.PI / 180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c;
+    }
+
+    // Initialize with default road type settings
+    const initialRoadType = document.getElementById('roadType').value;
+    document.getElementById('speedLimit').value = ROAD_TYPES[initialRoadType].defaultSpeedLimit;
+    document.getElementById('maxCapacity').value = ROAD_TYPES[initialRoadType].defaultCapacity;
+  </script>
+</body>
+</html>

@@ -10,7 +10,7 @@ const SideBar = () => {
     { name: "Geofence", icon: FaUserCog, path: "/Employee/my-geofence" },
     { name: "Vehicle", icon: FaMapMarkedAlt, path: "/Employee/my-vehicle" },
     { name: "Routes", icon: FaMapMarkedAlt, path: "/Employee/route" },
-
+    { name: "Layers", icon: FaCogs, path: "/Employee/my-layer" }
 ];
 
   return (

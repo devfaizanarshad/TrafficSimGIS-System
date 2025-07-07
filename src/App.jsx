@@ -33,12 +33,20 @@ import AllVoilations from "./BranchManager/Voilations/AllVoilations";
 // import EmployeeTracking from "./BranchManager/Tracking/EmployeeTracking";
 import Myprofile from "./Employees/myprofile";
 import Myvehicle from "./Employees/myvehicle";
-import Mygeofence from "./Employees/mygeofence";
+import Mygeofence from "./Employees/Mygeofence";
 import EmployeeLayout from "./layouts/EmployeeLayout";
 import Login from "./Login";
 import EmployeeMovementHistory from "./BranchManager/Tracking/EmployeeMovementHistory";
 import Maplayers from "./MapAdmin/Maplayers";
 import { ToastContainer } from 'react-toastify';
+import ThreatZoneCreator from "./MapAdmin/CreateThreat";
+import DrawPolylineMap from "./MapAdmin/DrawPolyline";
+import TestRoute from "./MapAdmin/TestRoute";
+import AddLayer from "./MapAdmin/LayerCreate";
+import AssignLayerToUser from "./OrganizationAdmin/userlayers";
+import AssignedLayers from "./OrganizationAdmin/assignedLayers";
+import Mylayer from './Employees/Mylayers'
+import AllEmployeeMovementHistory from "./BranchManager/Tracking/TrackAllMovementHistory";
 
 
 
@@ -170,10 +178,38 @@ function App() {
 />
 
 <Route
+  path="/admin/assign-layer-to-user"
+  element={
+    <DashboardLayout>
+      <AssignLayerToUser />
+    </DashboardLayout>
+  }
+/>
+
+<Route
+  path="/admin/assign-layer"
+  element={
+    <DashboardLayout>
+      <AssignedLayers />
+    </DashboardLayout>
+  }
+/>
+
+
+<Route
   path="/map-admin/dashboard"
   element={
     <MapAdminDashboardLayout >
       <Dashboard />
+    </MapAdminDashboardLayout >
+  }
+/>
+
+<Route
+  path="/map-admin/create-layer"
+  element={
+    <MapAdminDashboardLayout >
+      <AddLayer />
     </MapAdminDashboardLayout >
   }
 />
@@ -207,6 +243,27 @@ function App() {
 />
 
 <Route
+  path="/map-admin/createlayer"
+  element={
+    <MapAdminDashboardLayout >
+      <ThreatZoneCreator />
+    </MapAdminDashboardLayout >
+  }
+  
+/>
+
+<Route
+  path="/map-admin/DrawPolyline"
+  element={
+    <MapAdminDashboardLayout >
+      <DrawPolylineMap />
+    </MapAdminDashboardLayout >
+  }
+  
+/>
+
+
+<Route
   path="/branchmanager/assign-geofence"
   element={
     <BranchDashboardLayout >
@@ -221,6 +278,16 @@ function App() {
   element={
     <BranchDashboardLayout >
       <AssignedGeofenceList />
+    </BranchDashboardLayout >
+  }
+  
+/>
+
+<Route
+  path="/branchmanager/MovementHistory/all"
+  element={
+    <BranchDashboardLayout >
+      <AllEmployeeMovementHistory />
     </BranchDashboardLayout >
   }
   
@@ -336,9 +403,27 @@ function App() {
 />
 
 <Route
+  path="/Employee/my-layer"
+  element={
+    <EmployeeLayout >
+      <Mylayer />
+    </EmployeeLayout >
+  }
+  
+/>
+
+<Route
   path="/"
   element={
       <Login />
+  }
+  
+/>
+
+<Route
+  path="/get-routes"
+  element={
+      <TestRoute />
   }
   
 />

@@ -38,6 +38,7 @@ const Header = ({ appear, title }) => {
     localStorage.removeItem("image");
     localStorage.removeItem("employee_id");
     localStorage.removeItem("manager_id");
+    localStorage.removeItem("user_id");
 
     // Redirect to homepage/login
     navigate("/");

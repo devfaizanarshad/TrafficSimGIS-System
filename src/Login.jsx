@@ -26,7 +26,7 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
-  const { setManagerId, setEmployeeId, setRole, setUserName, setImage } = useContext(MapContext);
+  const { setManagerId, setEmployeeId, setRole, setUserName, setImage , setUserId} = useContext(MapContext);
 
   const features = [
     {
@@ -77,6 +77,8 @@ function Login() {
       localStorage.setItem('username', result.username )
       setImage(result.image);
       localStorage.setItem('image', result.image )
+      setUserId(result.id);
+      localStorage.setItem('user_id', result.id )
       const role = result.role?.toLowerCase();
       console.log(document.cookie); 
 

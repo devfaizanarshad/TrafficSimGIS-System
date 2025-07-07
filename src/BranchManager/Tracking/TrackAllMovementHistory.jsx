@@ -47,7 +47,7 @@ function RecenterMap({ center }) {
   return null;
 }
 
-const DashboardPage = () => {
+const AllEmployeeMovementHistory = () => {
   const { managerId } = useContext(MapContext);
   const navigate = useNavigate();
   const [allLocations, setAllLocations] = useState([]);
@@ -81,8 +81,8 @@ const DashboardPage = () => {
         setIsLoading(true);
         
         // Fetch all employees under this manager
-        const empRes = await axios.get(`http://localhost:3000/api/admin/list-users`);
-        const employeesData = empRes.data.users.map(emp => ({
+        const empRes = await axios.get(`http://localhost:3000/api/manager/${managerId}/employees`);
+        const employeesData = empRes.data.employees.map(emp => ({
           ...emp,
           id: emp.employee_id
         }));
@@ -308,7 +308,7 @@ const DashboardPage = () => {
         >
           <div className="w-16 h-16 mx-auto border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
           <p className="mt-4 text-lg font-medium text-gray-700">Loading movement data...</p>
-          <p className="text-sm text-gray-500">Tracking location history</p>
+          <p className="text-sm text-gray-500">Tracking employee location history</p>
         </motion.div>
       </div>
     );
@@ -322,15 +322,15 @@ const DashboardPage = () => {
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <button 
               onClick={() => navigate(-1)}
-              className=""
+              className="flex items-center px-4 py-2 text-sm font-medium text-blue-600 transition-colors rounded-lg bg-blue-50 hover:bg-blue-100"
             >
-              {/* <FiArrowLeft className="mr-2" />
-              Back to Dashboard */}
+              <FiArrowLeft className="mr-2" />
+              Back to Dashboard
             </button>
             
             <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-800">
-                 Track Movement History
+                Employee Movement History
               </h1>
               <p className="text-sm text-gray-600">
                 {filteredLocations.length} locations across {Object.keys(locationsByEmployee).length} employees
@@ -411,7 +411,7 @@ const DashboardPage = () => {
       {/* Main Content */}
       <div className="flex flex-col flex-1 overflow-hidden md:flex-row">
         {/* Sidebar with location list */}
-        {/* <div className="w-full p-4 overflow-y-auto bg-white border-r border-gray-200 md:w-80">
+        <div className="w-full p-4 overflow-y-auto bg-white border-r border-gray-200 md:w-80">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-800">Timeline</h2>
             <div className="flex items-center gap-2">
@@ -507,7 +507,7 @@ const DashboardPage = () => {
               })}
             </div>
           )}
-        </div> */}
+        </div>
 
         {/* Map Container */}
         <div className="relative flex-1">
@@ -734,4 +734,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default AllEmployeeMovementHistory;

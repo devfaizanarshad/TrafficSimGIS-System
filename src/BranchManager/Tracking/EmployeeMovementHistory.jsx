@@ -365,81 +365,97 @@ const EmployeeMovementHistory = () => {
 
         {/* Map Container */}
         <div className="relative flex-1">
-          <MapContainer
-            center={center}
-            zoom={14}
-            style={{ height: '100%', width: '100%' }}
-            className="z-0"
-          >
-            <TileLayer 
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
+<MapContainer
+  center={center}
+  zoom={14}
+  style={{ height: '100%', width: '100%' }}
+  className="z-0"
+>
+  <TileLayer 
+    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  />
 
-            <RecenterMap center={selectedLocation ? 
-              [selectedLocation.latitude, selectedLocation.longitude] : center} />
+  <RecenterMap center={selectedLocation ? 
+    [selectedLocation.latitude, selectedLocation.longitude] : center} />
 
-            {/* Draw path */}
-            {showPath && filteredLocations.length > 1 && (
-              <Polyline
-                positions={filteredLocations.map(loc => [loc.latitude, loc.longitude])}
-                color="#3b82f6"
-                weight={4}
-                opacity={0.7}
-              />
+  {/* Draw paths for each employee */}
+  {showPath && Object.entries(locationsByEmployee).map(([empId, locs]) => {
+    const empIndex = employees.findIndex(emp => emp.id === empId);
+    const color = employeeColors[empIndex % employeeColors.length];
+    
+    // Only draw path if there are at least 2 points
+    if (locs.length < 2) return null;
+    
+    return (
+      <Polyline
+        key={`path-${empId}`}
+        positions={locs.map(loc => [loc.latitude, loc.longitude])}
+        color={color}
+        weight={4}
+        opacity={0.7}
+      >
+        <Tooltip permanent>
+          {locs[0].employeeName}'s Path - {locs.length} points
+        </Tooltip>
+      </Polyline>
+    );
+  })}
+
+  {/* Show markers for all locations */}
+  {filteredLocations.map((loc, index) => {
+    const empIndex = employees.findIndex(emp => emp.id === loc.employeeId);
+    const color = employeeColors[empIndex % employeeColors.length];
+    
+    return (
+      <Marker
+        key={`marker-${loc.employeeId}-${index}`}
+        position={[loc.latitude, loc.longitude]}
+        icon={createEmployeeIcon(
+          color,
+          selectedLocation?.timestamp === loc.timestamp && selectedLocation?.employeeId === loc.employeeId,
+          index === 0
+        )}
+        eventHandlers={{
+          click: () => {
+            setSelectedLocation(loc);
+            setIsPlaying(false);
+          },
+        }}
+      >
+        <Popup>
+          <div className="space-y-2">
+            <h3 className="font-bold text-gray-900">
+              {loc.employeeName}
+            </h3>
+            <div className="flex items-center text-sm text-gray-600">
+              <FiMapPin className="mr-2 text-gray-400" />
+              <span>{loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</span>
+            </div>
+            <div className="flex items-center text-sm text-gray-600">
+              <FiClock className="mr-2 text-gray-400" />
+              <span>{formatDateTime(loc.timestamp)}</span>
+            </div>
+            {index === 0 && (
+              <div className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded">
+                Current Location
+              </div>
             )}
-
-            {/* Show markers for significant locations */}
-            {filteredLocations
-              .filter((_, i) => i === 0 || i === filteredLocations.length - 1 || i % 5 === 0)
-              .map((loc, index) => (
-                <Marker
-                  key={`marker-${index}`}
-                  position={[loc.latitude, loc.longitude]}
-                  icon={createEmployeeIcon(
-                    selectedLocation?.timestamp === loc.timestamp,
-                    index === 0
-                  )}
-                  eventHandlers={{
-                    click: () => {
-                      setSelectedLocation(loc);
-                      setIsPlaying(false);
-                    },
-                  }}
-                >
-                  <Popup>
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-gray-900">
-                        {employee?.first_name} {employee?.last_name}
-                      </h3>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <FiMapPin className="mr-2 text-gray-400" />
-                        <span>{loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <FiClock className="mr-2 text-gray-400" />
-                        <span>{formatDateTime(loc.timestamp)}</span>
-                      </div>
-                      {index === 0 && (
-                        <div className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded">
-                          Current Location
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                  <Tooltip 
-                    direction="top" 
-                    offset={[0, -20]} 
-                    opacity={0.9}
-                    permanent={selectedLocation?.timestamp === loc.timestamp}
-                  >
-                    {index === 0 ? 'Current' : 
-                     index === filteredLocations.length - 1 ? 'Start' : 
-                     formatTime(loc.timestamp)}
-                  </Tooltip>
-                </Marker>
-              ))}
-          </MapContainer>
+          </div>
+        </Popup>
+        <Tooltip 
+          direction="top" 
+          offset={[0, -20]} 
+          opacity={0.9}
+          permanent={selectedLocation?.timestamp === loc.timestamp && selectedLocation?.employeeId === loc.employeeId}
+        >
+          {index === 0 ? 'Current' : 
+           `${loc.employeeName.split(' ')[0]} - ${formatTime(loc.timestamp)}`}
+        </Tooltip>
+      </Marker>
+    );
+  })}
+</MapContainer>
 
           {/* Location Details Panel */}
           <AnimatePresence>

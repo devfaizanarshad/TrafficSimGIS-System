@@ -70,7 +70,7 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const map = L.map('map').setView([33.6844, 73.0479], 14);  // Initial map center (Rawalpindi, Pakistan)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('http://localhost:9090/tile/{z}/{x}/{y}.png').addTo(map);
 
     let marker = null;
     let pathPoints = [];

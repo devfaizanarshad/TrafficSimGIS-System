@@ -25,15 +25,19 @@ function MapLayers() {
   const [lines, setLines] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [geoId, setGeoId] = useState(null);
 
   // Fetch layers on mount
   useEffect(() => {
     const fetchLayers = async () => {
       try {
         const [userRes, publicRes] = await Promise.all([
-          axios.get(`http://localhost:3000/api/layers/user/${userId}/layers`),
+          axios.get(`http://localhost:3000/api/usergeolayer/allusergeolayers/${userId}`),
           axios.get('http://localhost:3000/api/layers/Layertype/public')
         ]);
+    
+        console.log(userRes.data);
+        
         setUserLayers(userRes.data);
         setPublicLayers(publicRes.data);
       } catch (err) {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { FaUserCog, FaMapMarkedAlt, FaTachometerAlt, FaCogs } from "react-icons/fa";
+import { icon } from "leaflet";
 
 const SideBar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,7 +11,8 @@ const SideBar = () => {
     { name: "Geofence", icon: FaUserCog, path: "/Employee/my-geofence" },
     { name: "Vehicle", icon: FaMapMarkedAlt, path: "/Employee/my-vehicle" },
     { name: "Routes", icon: FaMapMarkedAlt, path: "/Employee/route" },
-    { name: "Layers", icon: FaCogs, path: "/Employee/my-layer" }
+    { name: "Layers", icon: FaCogs, path: "/Employee/my-layer" },
+    { name: "Restricted", icon: FaUserCog, path: "/Employee/my-Restricted"}
 ];
 
   return (

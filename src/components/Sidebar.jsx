@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FaUserCog, FaMapMarkedAlt, FaCar, FaBuilding, FaUsers, FaTachometerAlt, FaCogs } from "react-icons/fa";
+import { FaUserCog, FaMapMarkedAlt, FaCar, FaBuilding, FaUsers, FaTachometerAlt, FaCogs, FaRProject } from "react-icons/fa";
+import { icon } from "leaflet";
 
 const SideBar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,8 @@ const SideBar = () => {
     { name: "Branches", icon: FaBuilding, path: "/admin/branch-management" },
     { name: "User Layers ", icon: FaUsers, path: "/admin/assign-layer-to-user" },
     { name: "Assigned Layers", icon: FaCogs, path: "/admin/assign-layer" },
+    { name: "Geo Restrict", icon: FaRProject, path: "/admin/assign-geo-layer"},
+    { name: "Assigned Restriction", icon:FaRProject, path: "/admin/assigned-geo-layer"}
     ];
 
   return (

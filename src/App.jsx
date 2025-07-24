@@ -47,7 +47,9 @@ import AssignLayerToUser from "./OrganizationAdmin/userlayers";
 import AssignedLayers from "./OrganizationAdmin/assignedLayers";
 import Mylayer from './Employees/Mylayers'
 import AllEmployeeMovementHistory from "./BranchManager/Tracking/TrackAllMovementHistory";
-
+import AssignUserGeoLayer from "./OrganizationAdmin/usergeolayer";
+import AssignedUserGeoLayers from "./OrganizationAdmin/assignedgeoLayers";
+import MapRestrictedLayers from './Employees/MyRestrictedLocations'
 
 
 function App() {
@@ -191,6 +193,24 @@ function App() {
   element={
     <DashboardLayout>
       <AssignedLayers />
+    </DashboardLayout>
+  }
+/>
+
+<Route
+  path="/admin/assign-geo-layer"
+  element={
+    <DashboardLayout>
+      <AssignUserGeoLayer />
+    </DashboardLayout>
+  }
+/>
+
+<Route
+  path="/admin/assigned-geo-layer"
+  element={
+    <DashboardLayout>
+      <AssignedUserGeoLayers />
     </DashboardLayout>
   }
 />
@@ -377,6 +397,16 @@ function App() {
   element={
     <EmployeeLayout >
       <Mygeofence />
+    </EmployeeLayout >
+  }
+  
+/>
+
+<Route
+  path="/Employee/my-Restricted"
+  element={
+    <EmployeeLayout >
+      <MapRestrictedLayers />
     </EmployeeLayout >
   }
   

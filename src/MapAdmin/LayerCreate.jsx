@@ -113,7 +113,7 @@ const [formData, setFormData] = useState({
             ></textarea>
           </div>
 
-          <div className="flex items-center space-x-3">
+<div className="flex items-center space-x-3">
   <input
     type="checkbox"
     name="is_public"

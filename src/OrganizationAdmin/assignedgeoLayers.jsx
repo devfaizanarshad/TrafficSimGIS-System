@@ -3,7 +3,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from 'axios';
 
-const AssignedLayers = () => {
+const AssignedUserGeoLayers = () => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -13,7 +13,7 @@ const AssignedLayers = () => {
 
   const fetchAssignments = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/layers/assignments');
+      const res = await axios.get('http://localhost:3000/api/usergeolayer/allusergeolayer');
       setAssignments(res.data);
         console.log("Assignments fetched:", res.data);
     } catch (error) {
@@ -28,10 +28,10 @@ const AssignedLayers = () => {
     console.log(item);
 
      try {
-                console.log(item.id);
+                console.log(item.ugl_id);
                 
                 const response = await axios.patch(
-                  `http://localhost:3000/api/layers/hide-layer/${item.id}`
+                  `http://localhost:3000/api/usergeolayer/permitUserGeoLayer/${item.ugl_id}`
                 );
 
                 if (response.status === 200) {
@@ -79,7 +79,7 @@ const AssignedLayers = () => {
 
   return (
     <div className="p-6 mx-auto mt-6 max-w-7xl">
-      <h2 className="mb-4 text-2xl font-bold text-gray-800">Layer Assignments</h2>
+      <h2 className="mb-4 text-2xl font-bold text-gray-800">Layer User Geo Assignments</h2>
 
       {loading ? (
         <p>Loading...</p>
@@ -93,9 +93,7 @@ const AssignedLayers = () => {
                 <th className="px-4 py-2 text-left">#</th>
                 <th className="px-4 py-2 text-left">Username</th>
                 <th className="px-4 py-2 text-left">Layer Name</th>
-                <th className="px-4 py-2 text-left">Type</th>
-                <th className="px-4 py-2 text-left">Start Time</th>
-                <th className="px-4 py-2 text-left">End Time</th>
+                <th className="px-4 py-2 text-left">Geofence Name</th>
                 <th className="px-4 py-2 text-left">Status</th>
 
 
@@ -106,14 +104,10 @@ const AssignedLayers = () => {
                 <tr key={item.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">{index + 1}</td>
                   <td className="px-4 py-2">{item.username}</td>
-                  <td className="px-4 py-2">{item.layer_name}</td>
-                  <td className="px-4 py-2 capitalize">{item.layer_category}</td>
-                  <td className="px-4 py-2">
-                    {item.start_time ? item.start_time : <span className="italic text-gray-400">Not set</span>}
-                  </td>
-                <td className="px-4 py-2">
-                    {item.end_time ? item.end_time : <span className="italic text-gray-400">Not set</span>}
-                  </td>
+                  <td className="px-4 py-2">{item.name}</td>
+                  <td className="px-4 py-2">{item.geofencename}</td>
+
+                  
                   
 <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
 <div className="flex justify-end space-x-3">
@@ -121,13 +115,13 @@ const AssignedLayers = () => {
 <button
   onClick={() => hideLayer(item)}
   className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-    item.is_hidden
+    item.is_permitted
       ? "bg-green-100 text-green-800 hover:bg-green-200"
       : "bg-red-100 text-red-800 hover:bg-red-200"
   }`}
-  title={item.is_hidden ? "Show this Layer" : "Hide this Layer"}
+  title={item.is_permitted ? "Show this Layer" : "Hide this Layer"}
 >
-  {item.is_hidden ? "Show Layer" : "Hide Layer"}
+  {item.is_permitted ? "Show Layer" : "Hide Layer"}
 </button>
   
 </div>
@@ -143,4 +137,4 @@ const AssignedLayers = () => {
   );
 };
 
-export default AssignedLayers;
+export default AssignedUserGeoLayers;
